@@ -1,0 +1,58 @@
+{
+  "home": {
+    "title": "Find Your Dream Holiday",
+    "subtitle": "Compare over 200 hotels at the best price",
+    "searchButton": "Find Holiday",
+    "greeting": "Welcome to WebApp Demo"
+  },
+  "hotelList": {
+    "title": "Hotel Search",
+    "results": "{{count}} hotels found",
+    "noResults": "No hotels found",
+    "priceFrom": "from {{price}} €",
+    "showOffers": "Show Offers"
+  },
+  "hotelDetail": {
+    "title": "Hotel Details",
+    "location": "Location",
+    "rating": "Rating",
+    "reviews": "{{count}} reviews",
+    "showOffers": "Show Offers",
+    "priceFrom": "from {{price}} €"
+  },
+  "offerList": {
+    "title": "Offers",
+    "results": "{{count}} offers",
+    "noResults": "No offers found",
+    "nights": "{{count}} nights",
+    "perPerson": "per person",
+    "book": "Book"
+  },
+  "checkout": {
+    "title": "Booking",
+    "firstName": "First Name",
+    "lastName": "Last Name",
+    "email": "Email Address",
+    "submit": "Book Now",
+    "success": "Booking Successful!",
+    "successMessage": "Thank you for your booking. You will receive a confirmation email."
+  },
+  "filter": {
+    "stars": "Stars",
+    "maxPrice": "Max Price",
+    "board": "Board",
+    "boardOptions": {
+      "ro": "Room Only",
+      "bb": "Bed & Breakfast",
+      "hb": "Half Board",
+      "fb": "Full Board",
+      "ai": "All Inclusive"
+    },
+    "reset": "Reset"
+  },
+  "common": {
+    "back": "Back",
+    "close": "Close",
+    "loading": "Loading..."
+  }
+}

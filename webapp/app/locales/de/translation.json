@@ -1,0 +1,58 @@
+{
+  "home": {
+    "title": "Traumurlaub finden",
+    "subtitle": "Vergleichen Sie über 200 Hotels zum besten Preis",
+    "searchButton": "Urlaub finden",
+    "greeting": "Willkommen bei WebApp Demo"
+  },
+  "hotelList": {
+    "title": "Hotelsuche",
+    "results": "{{count}} Hotels gefunden",
+    "noResults": "Keine Hotels gefunden",
+    "priceFrom": "ab {{price}} €",
+    "showOffers": "Angebote anzeigen"
+  },
+  "hotelDetail": {
+    "title": "Hoteldetails",
+    "location": "Lage",
+    "rating": "Bewertung",
+    "reviews": "{{count}} Bewertungen",
+    "showOffers": "Angebote anzeigen",
+    "priceFrom": "ab {{price}} €"
+  },
+  "offerList": {
+    "title": "Angebote",
+    "results": "{{count}} Angebote",
+    "noResults": "Keine Angebote gefunden",
+    "nights": "{{count}} Nächte",
+    "perPerson": "pro Person",
+    "book": "Buchen"
+  },
+  "checkout": {
+    "title": "Buchung",
+    "firstName": "Vorname",
+    "lastName": "Nachname",
+    "email": "E-Mail-Adresse",
+    "submit": "Jetzt buchen",
+    "success": "Buchung erfolgreich!",
+    "successMessage": "Vielen Dank für Ihre Buchung. Sie erhalten eine Bestätigung per E-Mail."
+  },
+  "filter": {
+    "stars": "Sterne",
+    "maxPrice": "Max. Preis",
+    "board": "Verpflegung",
+    "boardOptions": {
+      "ro": "Nur Übernachtung",
+      "bb": "Frühstück",
+      "hb": "Halbpension",
+      "fb": "Vollpension",
+      "ai": "All Inclusive"
+    },
+    "reset": "Zurücksetzen"
+  },
+  "common": {
+    "back": "Zurück",
+    "close": "Schließen",
+    "loading": "Laden..."
+  }
+}

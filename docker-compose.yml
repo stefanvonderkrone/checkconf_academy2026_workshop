@@ -1,0 +1,57 @@
+networks:
+  webapp:
+    name: webapp_demo_network
+    driver: bridge
+
+services:
+  webapp:
+    container_name: webapp-demo-dev
+    build:
+      context: .
+      dockerfile: .docker/webapp/Dockerfile
+    restart: unless-stopped
+    environment:
+      PORT: "4321"
+      NODE_ENV: development
+      DOCKER: "1"
+      SOCKET: "true"
+      LOG_FORMAT: pretty
+    volumes:
+      - webapp_sockets:/app/sockets
+    expose:
+      - "4321"
+      - "4322"
+    networks:
+      - webapp
+    healthcheck:
+      test: ["CMD", "curl", "-f", "--unix-socket", "/app/sockets/webapp.sock", "http://localhost/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    develop:
+      watch:
+        - path: ./webapp
+          action: sync
+          target: /app
+          ignore:
+            - node_modules/
+            - .git/
+
+  nginx:
+    build:
+      context: ./.docker/nginx
+    container_name: webapp-demo-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - webapp_sockets:/app/sockets
+    depends_on:
+      - webapp
+    networks:
+      webapp:
+        aliases:
+          - web.app
+
+volumes:
+  webapp_sockets:

@@ -1,0 +1,6 @@
+ios/
+.dev/
+.git/
+.cursor/
+**/node_modules/
+**/.DS_Store
