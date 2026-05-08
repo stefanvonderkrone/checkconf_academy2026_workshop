@@ -1,7 +1,7 @@
 FROM node:lts-slim AS base
 
 RUN apt-get update && apt-get install -y curl make && apt-get clean
-RUN npm i -g pnpm@latest && npm cache clean --force
+RUN npm i -g pnpm@10 && npm cache clean --force
 
 COPY ./webapp /app
 WORKDIR /app
@@ -10,7 +10,7 @@ RUN mkdir -p /app/sockets
 RUN chown -R node:node /app && chmod -R 775 /app
 
 FROM base AS deps
-RUN NODE_ENV=development pnpm install && pnpm store prune
+RUN pnpm install
 
 FROM base AS dev
 COPY --from=deps /app/node_modules /app/node_modules

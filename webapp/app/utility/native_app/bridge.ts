@@ -1,3 +1,4 @@
+// TODO: better types
 const callBridge = <T>(name: string, payload: T) => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handler = (window as any).webkit?.messageHandlers?.[name];

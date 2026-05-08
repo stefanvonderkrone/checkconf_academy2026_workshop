@@ -73,7 +73,7 @@ export default function HotelDetailPage() {
         <Link
           to={`/suche/angebot/${hotel.id}`}
           viewTransition
-          className="mt-6 block rounded-xl bg-primary px-6 py-3 text-center font-semibold text-white shadow-md transition-transform active:scale-[0.98]"
+          className="mt-6 block rounded-xl bg-blue-900 px-6 py-3 text-center font-semibold text-white shadow-md transition-transform active:scale-[0.98]"
         >
           {t("hotelDetail.showOffers")}
         </Link>

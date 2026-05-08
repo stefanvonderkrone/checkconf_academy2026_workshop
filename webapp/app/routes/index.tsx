@@ -13,15 +13,15 @@ export default function IndexPage() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <div className="flex flex-1 flex-col items-center justify-center bg-gradient-to-b from-primary to-primary-light px-6 text-center text-white">
+      <div className="flex flex-1 flex-col items-center justify-center bg-white px-6 text-center text-gray-900">
         <h1 className="text-4xl font-bold tracking-tight">
           {t("home.title")}
         </h1>
-        <p className="mt-4 text-lg text-blue-100">{t("home.subtitle")}</p>
+        <p className="mt-4 text-lg text-gray-600">{t("home.subtitle")}</p>
         <Link
           to="/suche/hotel"
           viewTransition
-          className="mt-8 rounded-2xl bg-white px-8 py-4 text-lg font-semibold text-primary shadow-lg transition-transform active:scale-95"
+          className="mt-8 rounded-2xl bg-blue-900 px-8 py-4 text-lg font-semibold text-white shadow-lg transition-transform active:scale-95"
         >
           {t("home.searchButton")}
         </Link>

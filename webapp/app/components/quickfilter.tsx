@@ -36,7 +36,7 @@ export function Quickfilter() {
   };
 
   return (
-    <div className="sticky top-12 z-30 flex flex-wrap items-center gap-2 border-b border-gray-200 bg-white px-4 py-3 shadow-sm">
+    <div       className="sticky top-0 z-30 flex items-center gap-2 overflow-x-auto whitespace-nowrap border-b border-gray-200 bg-white px-4 py-3 shadow-sm">
       <select
         value={currentStars}
         onChange={(e) => handleStars(e.target.value)}
