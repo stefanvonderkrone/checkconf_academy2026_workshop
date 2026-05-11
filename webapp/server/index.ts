@@ -1,6 +1,7 @@
 import express from "express";
 import compression from "compression";
 import fs from "node:fs";
+import type { ServerBuild } from "react-router";
 
 const app = express();
 app.use(compression());
@@ -35,7 +36,7 @@ if (process.env.NODE_ENV !== "production") {
   );
   app.use(express.static("build/client", { maxAge: "1h" }));
 
-  const build = await import("../build/server/react-router.js");
+  const build = await import('virtual:react-router/server-build') as unknown as ServerBuild;
   const { createRequestHandler } = await import("@react-router/express");
   app.all("/{*path}", createRequestHandler({ build: build as never }));
 }
