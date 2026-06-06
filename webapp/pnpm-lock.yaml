@@ -38,6 +38,9 @@ importers:
       i18next-http-backend:
         specifier: ^3.0.0
         version: 3.0.2
+      i18next-intervalplural-postprocessor:
+        specifier: ^3.0.0
+        version: 3.0.0
       isbot:
         specifier: ^5.1.36
         version: 5.1.36
@@ -1202,6 +1205,9 @@ packages:
 
   i18next-http-backend@3.0.2:
     resolution: {integrity: sha512-PdlvPnvIp4E1sYi46Ik4tBYh/v/NbYfFFgTjkwFl0is8A18s7/bx9aXqsrOax9WUbeNS6mD2oix7Z0yGGf6m5g==}
+
+  i18next-intervalplural-postprocessor@3.0.0:
+    resolution: {integrity: sha512-ZJWg2Gcb0kQqVI7kygLj9wVwQHK3mzRAg94uLsdoHqss0M9n0HSPr1pThd2AttkBsJFWR26G18hnKCqcTB8shQ==}
 
   i18next@24.2.3:
     resolution: {integrity: sha512-lfbf80OzkocvX7nmZtu7nSTNbrTYR52sLWxPtlXX1zAhVw8WEnFk4puUkCR4B1dNQwbSpEHHHemcZu//7EcB7A==}
@@ -2768,6 +2774,8 @@ snapshots:
       cross-fetch: 4.0.0
     transitivePeerDependencies:
       - encoding
+
+  i18next-intervalplural-postprocessor@3.0.0: {}
 
   i18next@24.2.3(typescript@5.9.3):
     dependencies:

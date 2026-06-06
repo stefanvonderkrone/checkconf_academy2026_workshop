@@ -1,1 +1,4 @@
 webapp/.react-router
+
+# Local Certs
+**/.docker/nginx/rootfs/etc/nginx/certs/*.pem

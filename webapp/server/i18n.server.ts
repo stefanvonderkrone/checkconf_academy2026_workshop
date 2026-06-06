@@ -1,18 +1,23 @@
-import { createInstance } from "i18next";
-import FsBackend from "i18next-fs-backend";
-import { resolve } from "node:path";
+import { createCookie } from 'react-router';
 
-export const createI18nServer = async (lng: string) => {
-  const instance = createInstance();
-  await instance.use(FsBackend).init({
-    lng,
-    fallbackLng: "de",
-    supportedLngs: ["de", "en"],
-    ns: ["translation"],
-    defaultNS: "translation",
-    backend: {
-      loadPath: resolve("./app/locales/{{lng}}/{{ns}}.json"),
+import { RemixI18Next } from 'remix-i18next/server';
+
+import * as i18n from '~/config/i18n';
+
+export const localeCookie = createCookie('lng', {
+    path: '/',
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+});
+
+export default new RemixI18Next({
+    detection: {
+        supportedLanguages: i18n.supportedLngs,
+        fallbackLanguage: i18n.fallbackLng,
+        cookie: localeCookie,
     },
-  });
-  return instance;
-};
+    // This is the configuration for i18next used
+    // when translating messages server-side only
+    i18next: i18n,
+});

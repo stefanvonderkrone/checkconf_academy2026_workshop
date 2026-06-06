@@ -21,6 +21,7 @@
     "i18next-browser-languagedetector": "^8.0.0",
     "i18next-fs-backend": "^2.0.0",
     "i18next-http-backend": "^3.0.0",
+    "i18next-intervalplural-postprocessor": "^3.0.0",
     "isbot": "^5.1.36",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

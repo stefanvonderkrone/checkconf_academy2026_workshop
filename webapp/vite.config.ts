@@ -14,7 +14,7 @@ export default defineConfig(({ mode }) => ({
     tailwindcss(),
     reactRouter(),
     babel({
-      filter: /\.[jt]sx?$/,
+      include: /\.[jt]sx?$/,
       babelConfig: {
         presets: ['@babel/preset-typescript'],
         plugins: [['babel-plugin-react-compiler']],

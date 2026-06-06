@@ -8,14 +8,14 @@ struct WebViewScreen: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                if headerState.icon == .cross {
-                    Button(action: { sendCloseEvent() }) {
-                        Image(systemName: "xmark")
-                            .foregroundStyle(.white)
-                    }
-                } else if headerState.canGoBack {
+                if headerState.canGoBack {
                     Button(action: { controller?.goBack() }) {
                         Image(systemName: "arrow.left")
+                            .foregroundStyle(.white)
+                    }
+                } else if headerState.icon == .cross {
+                    Button(action: { sendCloseEvent() }) {
+                        Image(systemName: "xmark")
                             .foregroundStyle(.white)
                     }
                 }
@@ -33,9 +33,15 @@ struct WebViewScreen: View {
                 url: URL(string: "https://web.app")!,
                 headerState: headerState,
                 onTabBarVisibilityChange: { tabBarVisible = $0 },
-                onControllerReady: { controller = $0 }
+                onControllerReady: { newController in
+                    DispatchQueue.main.async {
+                        controller = newController
+                    }
+                }
             )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .ignoresSafeArea(.container, edges: .bottom)
     }
 
