@@ -1,7 +1,6 @@
 import { useLoaderData } from "react-router";
 import { useTranslation } from "react-i18next";
-import { useEffect, useRef } from "react";
-import { useWindowVirtualizer } from "@tanstack/react-virtual";
+import { useEffect } from "react";
 import { AppShell } from "~/components/app_shell";
 import { Quickfilter } from "~/components/quickfilter";
 import { HotelCard } from "~/components/hotel_card";
@@ -51,14 +50,6 @@ export default function HotelListPage() {
     });
   }, [setHeader, t]);
 
-  const listRef = useRef<HTMLDivElement>(null);
-  const virtualizer = useWindowVirtualizer({
-    count: hotels.length,
-    estimateSize: () => 120,
-    overscan: 2,
-    scrollMargin: listRef.current?.scrollTop ?? 0,
-  });
-
   return (
     <AppShell title={t("hotelList.title")}>
       <Quickfilter />
@@ -67,27 +58,10 @@ export default function HotelListPage() {
           ? t("hotelList.results", { count: total })
           : t("hotelList.noResults")}
       </div>
-      <div ref={listRef}>
-        <div
-          style={{ height: virtualizer.getTotalSize(), position: "relative" }}
-        >
-          {virtualizer.getVirtualItems().map((vItem) => (
-            <div
-              key={vItem.key}
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                width: "100%",
-                transform: `translateY(${vItem.start}px)`,
-              }}
-              ref={virtualizer.measureElement}
-              data-index={vItem.index}
-            >
-              <HotelCard hotel={hotels[vItem.index]!} />
-            </div>
-          ))}
-        </div>
+      <div>
+        {hotels.map((hotel) => (
+          <HotelCard key={hotel.id} hotel={hotel} />
+        ))}
       </div>
     </AppShell>
   );

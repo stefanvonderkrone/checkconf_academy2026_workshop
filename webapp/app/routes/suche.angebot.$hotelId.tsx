@@ -1,7 +1,6 @@
 import { useLoaderData } from "react-router";
 import { useTranslation } from "react-i18next";
-import { useEffect, useRef } from "react";
-import { useWindowVirtualizer } from "@tanstack/react-virtual";
+import { useEffect } from "react";
 import { AppShell } from "~/components/app_shell";
 import { Quickfilter } from "~/components/quickfilter";
 import { OfferCard } from "~/components/offer_card";
@@ -52,14 +51,6 @@ export default function OfferListPage() {
     });
   }, [setHeader, t, hotelName]);
 
-  const listRef = useRef<HTMLDivElement>(null);
-  const virtualizer = useWindowVirtualizer({
-    count: offers.length,
-    estimateSize: () => 100,
-    overscan: 2,
-    scrollMargin: listRef.current?.scrollTop ?? 0,
-  });
-
   return (
     <AppShell title={`${t("offerList.title")} – ${hotelName}`}>
       <Quickfilter />
@@ -68,27 +59,10 @@ export default function OfferListPage() {
           ? t("offerList.results", { count: total })
           : t("offerList.noResults")}
       </div>
-      <div ref={listRef}>
-        <div
-          style={{ height: virtualizer.getTotalSize(), position: "relative" }}
-        >
-          {virtualizer.getVirtualItems().map((vItem) => (
-            <div
-              key={vItem.key}
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                width: "100%",
-                transform: `translateY(${vItem.start}px)`,
-              }}
-              ref={virtualizer.measureElement}
-              data-index={vItem.index}
-            >
-              <OfferCard offer={offers[vItem.index]!} />
-            </div>
-          ))}
-        </div>
+      <div>
+        {offers.map((offer) => (
+          <OfferCard key={offer.id} offer={offer} />
+        ))}
       </div>
     </AppShell>
   );
