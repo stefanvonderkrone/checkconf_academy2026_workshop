@@ -6,7 +6,6 @@ import {
   ScrollRestoration,
 } from "react-router";
 import type { ReactNode } from "react";
-import { useViewTransitionStore } from "~/stores/view_transition";
 import "./tailwind.css";
 
 export function Layout({ children }: { children: ReactNode }) {
@@ -31,18 +30,5 @@ export function Layout({ children }: { children: ReactNode }) {
 }
 
 export default function App() {
-  const direction = useViewTransitionStore((s) => s.direction);
-
-  const viewTransitionName =
-    direction === "forward"
-      ? "page-default-forward"
-      : direction === "backward"
-        ? "page-default-backward"
-        : undefined;
-
-  return (
-    <div style={{ viewTransitionName }}>
-      <Outlet />
-    </div>
-  );
+  return <Outlet />;
 }

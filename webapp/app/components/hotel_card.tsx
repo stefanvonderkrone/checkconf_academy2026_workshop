@@ -20,7 +20,6 @@ export function HotelCard({ hotel }: HotelCardProps) {
   return (
     <Link
       to={`/suche/detail/${hotel.id}`}
-      viewTransition
       className="flex gap-3 border-b border-gray-100 bg-white p-4 active:bg-gray-50"
     >
       <div

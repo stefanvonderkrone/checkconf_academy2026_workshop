@@ -36,7 +36,7 @@ export function useChangedSearch() {
           pathname: location.pathname,
           search: changedSearchLocation.search,
         },
-        { replace: true, preventScrollReset: true, viewTransition: false },
+        { replace: true, preventScrollReset: true },
       );
     }
   }, [changedSearchLocation, location.pathname, location.search, navigate]);
@@ -77,7 +77,7 @@ export function useApplyChangedSearch() {
     const search = nextSearchParams.toString();
     void navigate(
       { pathname: location.pathname, search: search ? `?${search}` : "" },
-      { replace: true, viewTransition: false },
+      { replace: true },
     );
   };
 }

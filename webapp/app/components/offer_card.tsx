@@ -20,7 +20,6 @@ export function OfferCard({ offer }: OfferCardProps) {
   return (
     <Link
       to="/buchung"
-      viewTransition
       className="flex gap-3 border-b border-gray-100 bg-white p-4 active:bg-gray-50"
     >
       <div
