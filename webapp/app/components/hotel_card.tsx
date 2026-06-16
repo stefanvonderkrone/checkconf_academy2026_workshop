@@ -1,4 +1,4 @@
-import { Link } from "react-router";
+import { Link, useLocation } from "react-router";
 import { useTranslation } from "react-i18next";
 import type { Hotel } from "~/types/hotel";
 
@@ -16,10 +16,11 @@ const BOARD_LABELS: Record<string, string> = {
 
 export function HotelCard({ hotel }: HotelCardProps) {
   const { t } = useTranslation();
+  const location = useLocation();
 
   return (
     <Link
-      to={`/suche/detail/${hotel.id}`}
+      to={{ pathname: `/suche/detail/${hotel.id}`, search: location.search }}
       className="flex gap-3 border-b border-gray-100 bg-white p-4 active:bg-gray-50"
     >
       <div

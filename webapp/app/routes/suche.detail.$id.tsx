@@ -1,4 +1,4 @@
-import { Link, useLoaderData } from "react-router";
+import { Link, useLoaderData, useLocation } from "react-router";
 import { useTranslation } from "react-i18next";
 import { useEffect } from "react";
 import { AppShell } from "~/components/app_shell";
@@ -19,6 +19,7 @@ export default function HotelDetailPage() {
   const { hotel } = useLoaderData<typeof loader>();
   const { t } = useTranslation();
   const { setHeader } = useAppHeaderStore();
+  const location = useLocation();
 
   useChangedSearch();
 
@@ -71,7 +72,7 @@ export default function HotelDetailPage() {
         </p>
 
         <Link
-          to={`/suche/angebot/${hotel.id}`}
+          to={{ pathname: `/suche/angebot/${hotel.id}`, search: location.search }}
           className="mt-6 block rounded-xl bg-blue-900 px-6 py-3 text-center font-semibold text-white shadow-md transition-transform active:scale-[0.98]"
         >
           {t("hotelDetail.showOffers")}

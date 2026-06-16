@@ -5,11 +5,31 @@ import i18next from "i18next";
 import { initReactI18next } from "react-i18next";
 import HttpBackend from "i18next-http-backend";
 import LanguageDetector from "i18next-browser-languagedetector";
-import { patchHistory } from "~/utility/history_bus";
+import { patchHistory, HistoryBus } from "~/utility/history_bus";
+import { useChangedSearchStore } from "~/stores/changed_search";
 import { useAppHeaderStore } from "~/stores/app_header";
 import { appBridge } from "~/utility/native_app/bridge";
 
 patchHistory();
+
+// Track every navigation globally (not per-route) so that pages reached from
+// routes without `useChangedSearch` (e.g. the index page) still enter the
+// history stack and can receive retroactive search-param updates.
+HistoryBus.subscribe((action, loc) => {
+  const newLocation = {
+    pathname: loc.pathname,
+    search: loc.search,
+    originalSearch: loc.search,
+    key: loc.state?.key ?? "",
+    idx: loc.state?.idx ?? 0,
+  };
+
+  const store = useChangedSearchStore.getState();
+  if (action === "PUSH") store.push(newLocation);
+  if (action === "REPLACE") store.replace(newLocation);
+  if (action === "POP") store.pop(newLocation);
+});
+
 useAppHeaderStore.subscribe((state) => {
   appBridge.replaceHeaderContent(state.header.type, state.header.title);
   appBridge.showNavigationIcon(state.header.icon);

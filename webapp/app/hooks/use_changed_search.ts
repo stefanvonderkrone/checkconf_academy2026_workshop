@@ -1,29 +1,11 @@
 import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router";
-import { HistoryBus } from "~/utility/history_bus";
 import { useChangedSearchStore } from "~/stores/changed_search";
 
 export function useChangedSearch() {
   const location = useLocation();
   const navigate = useNavigate();
   const { current: changedSearchLocation } = useChangedSearchStore();
-
-  useEffect(() => {
-    return HistoryBus.subscribe((action, loc) => {
-      const newLocation = {
-        pathname: loc.pathname,
-        search: loc.search,
-        originalSearch: loc.search,
-        key: loc.state?.key ?? "",
-        idx: loc.state?.idx ?? 0,
-      };
-
-      const store = useChangedSearchStore.getState();
-      if (action === "PUSH") store.push(newLocation);
-      if (action === "REPLACE") store.replace(newLocation);
-      if (action === "POP") store.pop(newLocation);
-    });
-  }, []);
 
   useEffect(() => {
     if (
