@@ -1,6 +1,5 @@
 import { useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
-import { useApplyChangedSearch } from "~/hooks/use_changed_search";
 import { SearchParamKey } from "~/config/search_param";
 import type { Board } from "~/types/hotel";
 
@@ -8,8 +7,19 @@ const BOARD_OPTIONS: Board[] = ["ro", "bb", "hb", "fb", "ai"];
 
 export function Quickfilter() {
   const { t } = useTranslation();
-  const [searchParams] = useSearchParams();
-  const applySearch = useApplyChangedSearch();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const applySearch = (newParams: Record<string, string | undefined>) => {
+    const next = new URLSearchParams(searchParams);
+    for (const [key, value] of Object.entries(newParams)) {
+      if (value !== undefined && value !== "") {
+        next.set(key, value);
+      } else {
+        next.delete(key);
+      }
+    }
+    setSearchParams(next, { replace: true });
+  };
 
   const currentStars = searchParams.get(SearchParamKey.Stars) ?? "";
   const currentMaxPrice = searchParams.get(SearchParamKey.MaxPrice) ?? "";

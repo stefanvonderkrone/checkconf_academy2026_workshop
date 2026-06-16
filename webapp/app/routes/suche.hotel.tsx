@@ -4,7 +4,6 @@ import { useEffect } from "react";
 import { AppShell } from "~/components/app_shell";
 import { Quickfilter } from "~/components/quickfilter";
 import { HotelCard } from "~/components/hotel_card";
-import { useChangedSearch } from "~/hooks/use_changed_search";
 import { useAppHeaderStore } from "~/stores/app_header";
 import { generateHotels } from "~/utility/mock_data";
 import type { Board, Hotel } from "~/types/hotel";
@@ -39,8 +38,6 @@ export default function HotelListPage() {
   const { hotels, total } = useLoaderData<typeof loader>();
   const { t } = useTranslation();
   const { setHeader } = useAppHeaderStore();
-
-  useChangedSearch();
 
   useEffect(() => {
     setHeader({

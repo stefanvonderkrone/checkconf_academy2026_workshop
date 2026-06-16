@@ -2,7 +2,6 @@ import { Link, useLoaderData, useLocation } from "react-router";
 import { useTranslation } from "react-i18next";
 import { useEffect } from "react";
 import { AppShell } from "~/components/app_shell";
-import { useChangedSearch } from "~/hooks/use_changed_search";
 import { useAppHeaderStore } from "~/stores/app_header";
 import { generateHotels } from "~/utility/mock_data";
 import type { Route } from "./+types/suche.detail.$id";
@@ -20,8 +19,6 @@ export default function HotelDetailPage() {
   const { t } = useTranslation();
   const { setHeader } = useAppHeaderStore();
   const location = useLocation();
-
-  useChangedSearch();
 
   useEffect(() => {
     setHeader({

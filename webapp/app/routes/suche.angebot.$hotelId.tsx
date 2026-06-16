@@ -4,7 +4,6 @@ import { useEffect } from "react";
 import { AppShell } from "~/components/app_shell";
 import { Quickfilter } from "~/components/quickfilter";
 import { OfferCard } from "~/components/offer_card";
-import { useChangedSearch } from "~/hooks/use_changed_search";
 import { useAppHeaderStore } from "~/stores/app_header";
 import { generateOffers, generateHotels } from "~/utility/mock_data";
 import type { Board } from "~/types/hotel";
@@ -40,8 +39,6 @@ export default function OfferListPage() {
   const { offers, hotelName, total } = useLoaderData<typeof loader>();
   const { t } = useTranslation();
   const { setHeader } = useAppHeaderStore();
-
-  useChangedSearch();
 
   useEffect(() => {
     setHeader({
