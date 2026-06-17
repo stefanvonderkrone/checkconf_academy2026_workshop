@@ -1,0 +1,413 @@
+diff --git a/webapp/app/components/hotel_card.tsx b/webapp/app/components/hotel_card.tsx
+index a451cd4..669cf15 100644
+--- a/webapp/app/components/hotel_card.tsx
++++ b/webapp/app/components/hotel_card.tsx
+@@ -1,4 +1,4 @@
+-import { Link, useLocation } from "react-router";
++import { Link } from "react-router";
+ import { useTranslation } from "react-i18next";
+ import type { Hotel } from "~/types/hotel";
+ 
+@@ -16,11 +16,11 @@ const BOARD_LABELS: Record<string, string> = {
+ 
+ export function HotelCard({ hotel }: HotelCardProps) {
+   const { t } = useTranslation();
+-  const location = useLocation();
+ 
+   return (
+     <Link
+-      to={{ pathname: `/suche/detail/${hotel.id}`, search: location.search }}
++      to={`/suche/detail/${hotel.id}`}
++      viewTransition
+       className="flex gap-3 border-b border-gray-100 bg-white p-4 active:bg-gray-50"
+     >
+       <div
+diff --git a/webapp/app/components/offer_card.tsx b/webapp/app/components/offer_card.tsx
+index 0d456b4..01f8e1b 100644
+--- a/webapp/app/components/offer_card.tsx
++++ b/webapp/app/components/offer_card.tsx
+@@ -20,6 +20,7 @@ export function OfferCard({ offer }: OfferCardProps) {
+   return (
+     <Link
+       to="/buchung"
++      viewTransition
+       className="flex gap-3 border-b border-gray-100 bg-white p-4 active:bg-gray-50"
+     >
+       <div
+diff --git a/webapp/app/entry.client.tsx b/webapp/app/entry.client.tsx
+index 989ba45..44fa326 100644
+--- a/webapp/app/entry.client.tsx
++++ b/webapp/app/entry.client.tsx
+@@ -5,31 +5,14 @@ import i18next from "i18next";
+ import { initReactI18next } from "react-i18next";
+ import HttpBackend from "i18next-http-backend";
+ import LanguageDetector from "i18next-browser-languagedetector";
+-import { patchHistory, HistoryBus } from "~/utility/history_bus";
+-import { useChangedSearchStore } from "~/stores/changed_search";
++import { patchHistory, setDirectionSetter } from "~/utility/view_transitions";
++import { HistoryBus } from "~/utility/history_bus";
++import { useViewTransitionStore } from "~/stores/view_transition";
+ import { useAppHeaderStore } from "~/stores/app_header";
+ import { appBridge } from "~/utility/native_app/bridge";
+ 
+-patchHistory();
+-
+-// Track every navigation globally (not per-route) so that pages reached from
+-// routes without `useChangedSearch` (e.g. the index page) still enter the
+-// history stack and can receive retroactive search-param updates.
+-HistoryBus.subscribe((action, loc) => {
+-  const newLocation = {
+-    pathname: loc.pathname,
+-    search: loc.search,
+-    originalSearch: loc.search,
+-    key: loc.state?.key ?? "",
+-    idx: loc.state?.idx ?? 0,
+-  };
+-
+-  const store = useChangedSearchStore.getState();
+-  if (action === "PUSH") store.push(newLocation);
+-  if (action === "REPLACE") store.replace(newLocation);
+-  if (action === "POP") store.pop(newLocation);
+-});
+-
++patchHistory(HistoryBus);
++setDirectionSetter(useViewTransitionStore.getState().setDirection);
+ useAppHeaderStore.subscribe((state) => {
+   appBridge.replaceHeaderContent(state.header.type, state.header.title);
+   appBridge.showNavigationIcon(state.header.icon);
+diff --git a/webapp/app/hooks/use_changed_search.ts b/webapp/app/hooks/use_changed_search.ts
+index db9df61..b9a8ada 100644
+--- a/webapp/app/hooks/use_changed_search.ts
++++ b/webapp/app/hooks/use_changed_search.ts
+@@ -1,5 +1,6 @@
+ import { useEffect } from "react";
+ import { useLocation, useNavigate } from "react-router";
++import { HistoryBus } from "~/utility/history_bus";
+ import { useChangedSearchStore } from "~/stores/changed_search";
+ 
+ export function useChangedSearch() {
+@@ -7,6 +8,23 @@ export function useChangedSearch() {
+   const navigate = useNavigate();
+   const { current: changedSearchLocation } = useChangedSearchStore();
+ 
++  useEffect(() => {
++    return HistoryBus.subscribe((action, loc) => {
++      const newLocation = {
++        pathname: loc.pathname,
++        search: loc.search,
++        originalSearch: loc.search,
++        key: loc.state?.key ?? "",
++        idx: loc.state?.idx ?? 0,
++      };
++
++      const store = useChangedSearchStore.getState();
++      if (action === "PUSH") store.push(newLocation);
++      if (action === "REPLACE") store.replace(newLocation);
++      if (action === "POP") store.pop(newLocation);
++    });
++  }, []);
++
+   useEffect(() => {
+     if (
+       changedSearchLocation.pathname === location.pathname &&
+@@ -18,7 +36,7 @@ export function useChangedSearch() {
+           pathname: location.pathname,
+           search: changedSearchLocation.search,
+         },
+-        { replace: true, preventScrollReset: true },
++        { replace: true, preventScrollReset: true, viewTransition: false },
+       );
+     }
+   }, [changedSearchLocation, location.pathname, location.search, navigate]);
+@@ -59,7 +77,7 @@ export function useApplyChangedSearch() {
+     const search = nextSearchParams.toString();
+     void navigate(
+       { pathname: location.pathname, search: search ? `?${search}` : "" },
+-      { replace: true },
++      { replace: true, viewTransition: false },
+     );
+   };
+ }
+diff --git a/webapp/app/root.tsx b/webapp/app/root.tsx
+index 56fd0c2..d6bb7a7 100644
+--- a/webapp/app/root.tsx
++++ b/webapp/app/root.tsx
+@@ -6,6 +6,7 @@ import {
+   ScrollRestoration,
+ } from "react-router";
+ import type { ReactNode } from "react";
++import { useViewTransitionStore } from "~/stores/view_transition";
+ import "./tailwind.css";
+ 
+ export function Layout({ children }: { children: ReactNode }) {
+@@ -30,5 +31,18 @@ export function Layout({ children }: { children: ReactNode }) {
+ }
+ 
+ export default function App() {
+-  return <Outlet />;
++  const direction = useViewTransitionStore((s) => s.direction);
++
++  const viewTransitionName =
++    direction === "forward"
++      ? "page-default-forward"
++      : direction === "backward"
++        ? "page-default-backward"
++        : undefined;
++
++  return (
++    <div style={{ viewTransitionName }}>
++      <Outlet />
++    </div>
++  );
+ }
+diff --git a/webapp/app/routes/index.tsx b/webapp/app/routes/index.tsx
+index 09d2f7c..403f500 100644
+--- a/webapp/app/routes/index.tsx
++++ b/webapp/app/routes/index.tsx
+@@ -20,6 +20,7 @@ export default function IndexPage() {
+         <p className="mt-4 text-lg text-gray-600">{t("home.subtitle")}</p>
+         <Link
+           to="/suche/hotel"
++          viewTransition
+           className="mt-8 rounded-2xl bg-blue-900 px-8 py-4 text-lg font-semibold text-white shadow-lg transition-transform active:scale-95"
+         >
+           {t("home.searchButton")}
+diff --git a/webapp/app/routes/suche.detail.$id.tsx b/webapp/app/routes/suche.detail.$id.tsx
+index 12853a9..a5f9cb9 100644
+--- a/webapp/app/routes/suche.detail.$id.tsx
++++ b/webapp/app/routes/suche.detail.$id.tsx
+@@ -1,4 +1,4 @@
+-import { Link, useLoaderData, useLocation } from "react-router";
++import { Link, useLoaderData } from "react-router";
+ import { useTranslation } from "react-i18next";
+ import { useEffect } from "react";
+ import { AppShell } from "~/components/app_shell";
+@@ -19,7 +19,6 @@ export default function HotelDetailPage() {
+   const { hotel } = useLoaderData<typeof loader>();
+   const { t } = useTranslation();
+   const { setHeader } = useAppHeaderStore();
+-  const location = useLocation();
+ 
+   useChangedSearch();
+ 
+@@ -72,7 +71,8 @@ export default function HotelDetailPage() {
+         </p>
+ 
+         <Link
+-          to={{ pathname: `/suche/angebot/${hotel.id}`, search: location.search }}
++          to={`/suche/angebot/${hotel.id}`}
++          viewTransition
+           className="mt-6 block rounded-xl bg-blue-900 px-6 py-3 text-center font-semibold text-white shadow-md transition-transform active:scale-[0.98]"
+         >
+           {t("hotelDetail.showOffers")}
+diff --git a/webapp/app/stores/view_transition.ts b/webapp/app/stores/view_transition.ts
+new file mode 100644
+index 0000000..b1746ef
+--- /dev/null
++++ b/webapp/app/stores/view_transition.ts
+@@ -0,0 +1,13 @@
++import { create } from "zustand";
++
++type Direction = "forward" | "backward" | "none";
++
++type ViewTransitionStore = {
++  direction: Direction;
++  setDirection: (d: Direction) => void;
++};
++
++export const useViewTransitionStore = create<ViewTransitionStore>((set) => ({
++  direction: "none",
++  setDirection: (direction) => set({ direction }),
++}));
+diff --git a/webapp/app/tailwind.css b/webapp/app/tailwind.css
+index f1d8c73..c3f1ab7 100644
+--- a/webapp/app/tailwind.css
++++ b/webapp/app/tailwind.css
+@@ -1 +1,49 @@
+ @import "tailwindcss";
++
++@layer view-transitions {
++  @media (prefers-reduced-motion: no-preference) {
++    :root {
++      --vt-duration: 300ms;
++      --vt-easing: ease-out;
++    }
++
++    ::view-transition-group(*),
++    ::view-transition-new(*),
++    ::view-transition-old(*) {
++      animation-name: none;
++    }
++
++    /* FORWARD: new page slides in from right */
++    ::view-transition-new(page-default-forward) {
++      animation: slide-in-from-right var(--vt-duration) var(--vt-easing) both;
++    }
++    ::view-transition-old(page-default-forward) {
++      animation: slide-out-to-left var(--vt-duration) var(--vt-easing) both,
++                 darken-overlay var(--vt-duration) var(--vt-easing) both;
++    }
++
++    /* BACKWARD: old page slides back from left */
++    ::view-transition-new(page-default-backward) {
++      animation: slide-out-to-left var(--vt-duration) var(--vt-easing) both;
++      animation-direction: reverse;
++    }
++    ::view-transition-old(page-default-backward) {
++      animation: slide-in-from-right var(--vt-duration) var(--vt-easing) both;
++      animation-direction: reverse;
++      z-index: 50;
++    }
++
++    @keyframes slide-in-from-right {
++      from { transform: translateX(100%); }
++      to   { transform: translateX(0); }
++    }
++    @keyframes slide-out-to-left {
++      from { transform: translateX(0); opacity: 1; }
++      to   { transform: translateX(-50%); opacity: 0.8; }
++    }
++    @keyframes darken-overlay {
++      from { filter: brightness(1); }
++      to   { filter: brightness(0.6); }
++    }
++  }
++}
+diff --git a/webapp/app/utility/history_bus.ts b/webapp/app/utility/history_bus.ts
+index 04408e5..e3485b9 100644
+--- a/webapp/app/utility/history_bus.ts
++++ b/webapp/app/utility/history_bus.ts
+@@ -22,44 +22,3 @@ export const HistoryBus = {
+     }
+   },
+ };
+-
+-export function patchHistory() {
+-  if (typeof window === "undefined") return;
+-
+-  const originalPushState = window.history.pushState.bind(window.history);
+-  const originalReplaceState = window.history.replaceState.bind(window.history);
+-
+-  window.history.pushState = function (
+-    state: unknown,
+-    title: string,
+-    url?: string | URL | null,
+-  ) {
+-    originalPushState(state, title, url);
+-    HistoryBus.notify("PUSH", {
+-      pathname: window.location.pathname,
+-      search: window.location.search,
+-      state: state as { key?: string; idx?: number } | null,
+-    });
+-  };
+-
+-  window.history.replaceState = function (
+-    state: unknown,
+-    title: string,
+-    url?: string | URL | null,
+-  ) {
+-    originalReplaceState(state, title, url);
+-    HistoryBus.notify("REPLACE", {
+-      pathname: window.location.pathname,
+-      search: window.location.search,
+-      state: state as { key?: string; idx?: number } | null,
+-    });
+-  };
+-
+-  window.addEventListener("popstate", (event) => {
+-    HistoryBus.notify("POP", {
+-      pathname: window.location.pathname,
+-      search: window.location.search,
+-      state: event.state as { key?: string; idx?: number } | null,
+-    });
+-  });
+-}
+diff --git a/webapp/app/utility/view_transitions.ts b/webapp/app/utility/view_transitions.ts
+new file mode 100644
+index 0000000..6f5f74e
+--- /dev/null
++++ b/webapp/app/utility/view_transitions.ts
+@@ -0,0 +1,83 @@
++import type { HistoryBus as HistoryBusType } from "./history_bus";
++
++type Direction = "forward" | "backward" | "none";
++
++let currentIdx = 0;
++let lastPathname = typeof window !== "undefined" ? window.location.pathname : "/";
++let setDirectionFn: ((d: Direction) => void) | null = null;
++
++export function setDirectionSetter(fn: (d: Direction) => void) {
++  setDirectionFn = fn;
++}
++
++function setDirection(d: Direction) {
++  setDirectionFn?.(d);
++}
++
++export function patchHistory(bus: typeof HistoryBusType) {
++  if (typeof window === "undefined") return;
++
++  const originalPushState = window.history.pushState.bind(window.history);
++  const originalReplaceState = window.history.replaceState.bind(window.history);
++
++  window.history.pushState = function (
++    state: unknown,
++    title: string,
++    url?: string | URL | null,
++  ) {
++    currentIdx++;
++    const patchedState = { ...(state as Record<string, unknown> | null), __idx: currentIdx };
++    originalPushState(patchedState, title, url);
++
++    const newPathname = window.location.pathname;
++    if (newPathname !== lastPathname) {
++      setDirection("forward");
++    } else {
++      setDirection("none");
++    }
++    lastPathname = newPathname;
++
++    bus.notify("PUSH", {
++      pathname: window.location.pathname,
++      search: window.location.search,
++      state: patchedState as { key?: string; idx?: number },
++    });
++  };
++
++  window.history.replaceState = function (
++    state: unknown,
++    title: string,
++    url?: string | URL | null,
++  ) {
++    const patchedState = { ...(state as Record<string, unknown> | null), __idx: currentIdx };
++    originalReplaceState(patchedState, title, url);
++    setDirection("none");
++
++    bus.notify("REPLACE", {
++      pathname: window.location.pathname,
++      search: window.location.search,
++      state: patchedState as { key?: string; idx?: number },
++    });
++  };
++
++  window.addEventListener("popstate", (event) => {
++    const state = event.state as { __idx?: number; key?: string } | null;
++    const newIdx = state?.__idx ?? 0;
++    const newPathname = window.location.pathname;
++
++    if (newPathname !== lastPathname) {
++      setDirection(newIdx < currentIdx ? "backward" : "forward");
++    } else {
++      setDirection("none");
++    }
++
++    currentIdx = newIdx;
++    lastPathname = newPathname;
++
++    bus.notify("POP", {
++      pathname: window.location.pathname,
++      search: window.location.search,
++      state: state as { key?: string; idx?: number },
++    });
++  });
++}

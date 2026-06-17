@@ -1,0 +1,389 @@
+diff --git a/webapp/app/components/quickfilter.tsx b/webapp/app/components/quickfilter.tsx
+index 7f50ada..9e5a154 100644
+--- a/webapp/app/components/quickfilter.tsx
++++ b/webapp/app/components/quickfilter.tsx
+@@ -1,5 +1,6 @@
+ import { useSearchParams } from "react-router";
+ import { useTranslation } from "react-i18next";
++import { useApplyChangedSearch } from "~/hooks/use_changed_search";
+ import { SearchParamKey } from "~/config/search_param";
+ import type { Board } from "~/types/hotel";
+ 
+@@ -7,19 +8,8 @@ const BOARD_OPTIONS: Board[] = ["ro", "bb", "hb", "fb", "ai"];
+ 
+ export function Quickfilter() {
+   const { t } = useTranslation();
+-  const [searchParams, setSearchParams] = useSearchParams();
+-
+-  const applySearch = (newParams: Record<string, string | undefined>) => {
+-    const next = new URLSearchParams(searchParams);
+-    for (const [key, value] of Object.entries(newParams)) {
+-      if (value !== undefined && value !== "") {
+-        next.set(key, value);
+-      } else {
+-        next.delete(key);
+-      }
+-    }
+-    setSearchParams(next, { replace: true });
+-  };
++  const [searchParams] = useSearchParams();
++  const applySearch = useApplyChangedSearch();
+ 
+   const currentStars = searchParams.get(SearchParamKey.Stars) ?? "";
+   const currentMaxPrice = searchParams.get(SearchParamKey.MaxPrice) ?? "";
+diff --git a/webapp/app/entry.client.tsx b/webapp/app/entry.client.tsx
+index 21952c4..989ba45 100644
+--- a/webapp/app/entry.client.tsx
++++ b/webapp/app/entry.client.tsx
+@@ -5,9 +5,31 @@ import i18next from "i18next";
+ import { initReactI18next } from "react-i18next";
+ import HttpBackend from "i18next-http-backend";
+ import LanguageDetector from "i18next-browser-languagedetector";
++import { patchHistory, HistoryBus } from "~/utility/history_bus";
++import { useChangedSearchStore } from "~/stores/changed_search";
+ import { useAppHeaderStore } from "~/stores/app_header";
+ import { appBridge } from "~/utility/native_app/bridge";
+ 
++patchHistory();
++
++// Track every navigation globally (not per-route) so that pages reached from
++// routes without `useChangedSearch` (e.g. the index page) still enter the
++// history stack and can receive retroactive search-param updates.
++HistoryBus.subscribe((action, loc) => {
++  const newLocation = {
++    pathname: loc.pathname,
++    search: loc.search,
++    originalSearch: loc.search,
++    key: loc.state?.key ?? "",
++    idx: loc.state?.idx ?? 0,
++  };
++
++  const store = useChangedSearchStore.getState();
++  if (action === "PUSH") store.push(newLocation);
++  if (action === "REPLACE") store.replace(newLocation);
++  if (action === "POP") store.pop(newLocation);
++});
++
+ useAppHeaderStore.subscribe((state) => {
+   appBridge.replaceHeaderContent(state.header.type, state.header.title);
+   appBridge.showNavigationIcon(state.header.icon);
+diff --git a/webapp/app/hooks/use_changed_search.ts b/webapp/app/hooks/use_changed_search.ts
+new file mode 100644
+index 0000000..db9df61
+--- /dev/null
++++ b/webapp/app/hooks/use_changed_search.ts
+@@ -0,0 +1,65 @@
++import { useEffect } from "react";
++import { useLocation, useNavigate } from "react-router";
++import { useChangedSearchStore } from "~/stores/changed_search";
++
++export function useChangedSearch() {
++  const location = useLocation();
++  const navigate = useNavigate();
++  const { current: changedSearchLocation } = useChangedSearchStore();
++
++  useEffect(() => {
++    if (
++      changedSearchLocation.pathname === location.pathname &&
++      changedSearchLocation.search !== location.search &&
++      changedSearchLocation.originalSearch === location.search
++    ) {
++      void navigate(
++        {
++          pathname: location.pathname,
++          search: changedSearchLocation.search,
++        },
++        { replace: true, preventScrollReset: true },
++      );
++    }
++  }, [changedSearchLocation, location.pathname, location.search, navigate]);
++}
++
++export function useApplyChangedSearch() {
++  const navigate = useNavigate();
++  const location = useLocation();
++
++  return (newParams: Record<string, string | undefined>) => {
++    const prevSearchParams = new URLSearchParams(location.search);
++    const nextSearchParams = new URLSearchParams(location.search);
++
++    for (const [key, value] of Object.entries(newParams)) {
++      if (value !== undefined && value !== "") {
++        nextSearchParams.set(key, value);
++      } else {
++        nextSearchParams.delete(key);
++      }
++    }
++
++    const changed = new URLSearchParams();
++    const removed = new URLSearchParams();
++
++    for (const [key, value] of nextSearchParams.entries()) {
++      if (prevSearchParams.get(key) !== value) {
++        changed.set(key, value);
++      }
++    }
++    for (const [key] of prevSearchParams.entries()) {
++      if (!nextSearchParams.has(key)) {
++        removed.set(key, "");
++      }
++    }
++
++    useChangedSearchStore.getState().update({ changed, removed });
++
++    const search = nextSearchParams.toString();
++    void navigate(
++      { pathname: location.pathname, search: search ? `?${search}` : "" },
++      { replace: true },
++    );
++  };
++}
+diff --git a/webapp/app/routes/suche.angebot.$hotelId.tsx b/webapp/app/routes/suche.angebot.$hotelId.tsx
+index b7f81a6..e0253d6 100644
+--- a/webapp/app/routes/suche.angebot.$hotelId.tsx
++++ b/webapp/app/routes/suche.angebot.$hotelId.tsx
+@@ -4,6 +4,7 @@ import { useEffect } from "react";
+ import { AppShell } from "~/components/app_shell";
+ import { Quickfilter } from "~/components/quickfilter";
+ import { OfferCard } from "~/components/offer_card";
++import { useChangedSearch } from "~/hooks/use_changed_search";
+ import { useAppHeaderStore } from "~/stores/app_header";
+ import { generateOffers, generateHotels } from "~/utility/mock_data";
+ import type { Board } from "~/types/hotel";
+@@ -40,6 +41,8 @@ export default function OfferListPage() {
+   const { t } = useTranslation();
+   const { setHeader } = useAppHeaderStore();
+ 
++  useChangedSearch();
++
+   useEffect(() => {
+     setHeader({
+       title: `${t("offerList.title")} – ${hotelName}`,
+diff --git a/webapp/app/routes/suche.detail.$id.tsx b/webapp/app/routes/suche.detail.$id.tsx
+index 7afa425..12853a9 100644
+--- a/webapp/app/routes/suche.detail.$id.tsx
++++ b/webapp/app/routes/suche.detail.$id.tsx
+@@ -2,6 +2,7 @@ import { Link, useLoaderData, useLocation } from "react-router";
+ import { useTranslation } from "react-i18next";
+ import { useEffect } from "react";
+ import { AppShell } from "~/components/app_shell";
++import { useChangedSearch } from "~/hooks/use_changed_search";
+ import { useAppHeaderStore } from "~/stores/app_header";
+ import { generateHotels } from "~/utility/mock_data";
+ import type { Route } from "./+types/suche.detail.$id";
+@@ -20,6 +21,8 @@ export default function HotelDetailPage() {
+   const { setHeader } = useAppHeaderStore();
+   const location = useLocation();
+ 
++  useChangedSearch();
++
+   useEffect(() => {
+     setHeader({
+       title: hotel.name,
+diff --git a/webapp/app/routes/suche.hotel.tsx b/webapp/app/routes/suche.hotel.tsx
+index 85a195f..98b44fe 100644
+--- a/webapp/app/routes/suche.hotel.tsx
++++ b/webapp/app/routes/suche.hotel.tsx
+@@ -4,6 +4,7 @@ import { useEffect } from "react";
+ import { AppShell } from "~/components/app_shell";
+ import { Quickfilter } from "~/components/quickfilter";
+ import { HotelCard } from "~/components/hotel_card";
++import { useChangedSearch } from "~/hooks/use_changed_search";
+ import { useAppHeaderStore } from "~/stores/app_header";
+ import { generateHotels } from "~/utility/mock_data";
+ import type { Board, Hotel } from "~/types/hotel";
+@@ -39,6 +40,8 @@ export default function HotelListPage() {
+   const { t } = useTranslation();
+   const { setHeader } = useAppHeaderStore();
+ 
++  useChangedSearch();
++
+   useEffect(() => {
+     setHeader({
+       title: t("hotelList.title"),
+diff --git a/webapp/app/stores/changed_search.ts b/webapp/app/stores/changed_search.ts
+new file mode 100644
+index 0000000..6699a6c
+--- /dev/null
++++ b/webapp/app/stores/changed_search.ts
+@@ -0,0 +1,100 @@
++import { create } from "zustand";
++
++type ChangedSearchLocation = {
++  pathname: string;
++  search: string;
++  originalSearch: string;
++  key: string;
++  idx: number;
++};
++
++type ChangedSearchState = {
++  previous: ChangedSearchLocation[];
++  current: ChangedSearchLocation;
++  next: ChangedSearchLocation[];
++  push: (location: ChangedSearchLocation) => void;
++  replace: (location: ChangedSearchLocation) => void;
++  pop: (location: ChangedSearchLocation) => void;
++  update: (params: { changed: URLSearchParams; removed: URLSearchParams }) => void;
++};
++
++const initialLocation: ChangedSearchLocation = {
++  pathname: "/",
++  search: "",
++  originalSearch: "",
++  key: "",
++  idx: 0,
++};
++
++export const useChangedSearchStore = create<ChangedSearchState>((set) => ({
++  previous: [],
++  current: initialLocation,
++  next: [],
++
++  push(location) {
++    set((old) => ({
++      previous: [...old.previous, old.current],
++      current: location,
++      next: [],
++    }));
++  },
++
++  replace(location) {
++    set((old) => ({
++      ...old,
++      current: location,
++    }));
++  },
++
++  pop(location) {
++    set((old) => {
++      for (let i = old.previous.length - 1; i >= 0; i--) {
++        if (old.previous[i]?.key === location.key) {
++          return {
++            previous: old.previous.slice(0, i),
++            current: old.previous[i]!,
++            next: [old.current, ...old.previous.slice(i + 1), ...old.next],
++          };
++        }
++      }
++
++      for (let i = 0; i < old.next.length; i++) {
++        if (old.next[i]?.key === location.key) {
++          return {
++            previous: [...old.previous, old.current, ...old.next.slice(0, i)],
++            current: old.next[i]!,
++            next: old.next.slice(i + 1),
++          };
++        }
++      }
++
++      return old;
++    });
++  },
++
++  update({ changed, removed }) {
++    set((state) => ({
++      ...state,
++      previous: state.previous.map((location) => {
++        const url = new URL(
++          location.pathname + location.search,
++          window.location.origin,
++        );
++
++        for (const [key, value] of changed.entries()) {
++          url.searchParams.set(key, value);
++        }
++
++        for (const [key] of removed.entries()) {
++          url.searchParams.delete(key);
++        }
++
++        const newSearch = url.searchParams.toString();
++        return {
++          ...location,
++          search: newSearch ? `?${newSearch}` : "",
++        };
++      }),
++    }));
++  },
++}));
+diff --git a/webapp/app/types/app_history.ts b/webapp/app/types/app_history.ts
+new file mode 100644
+index 0000000..8ceabc2
+--- /dev/null
++++ b/webapp/app/types/app_history.ts
+@@ -0,0 +1,3 @@
++export type AppHistoryState = {
++  layers?: string[];
++};
+diff --git a/webapp/app/utility/history_bus.ts b/webapp/app/utility/history_bus.ts
+new file mode 100644
+index 0000000..04408e5
+--- /dev/null
++++ b/webapp/app/utility/history_bus.ts
+@@ -0,0 +1,65 @@
++type HistoryLocation = {
++  pathname: string;
++  search: string;
++  state: { key?: string; idx?: number } | null;
++};
++
++type Action = "PUSH" | "REPLACE" | "POP";
++type Handler = (action: Action, location: HistoryLocation) => void;
++
++const handlers = new Set<Handler>();
++
++export const HistoryBus = {
++  subscribe(handler: Handler) {
++    handlers.add(handler);
++    return () => {
++      handlers.delete(handler);
++    };
++  },
++  notify(action: Action, location: HistoryLocation) {
++    for (const handler of handlers) {
++      handler(action, location);
++    }
++  },
++};
++
++export function patchHistory() {
++  if (typeof window === "undefined") return;
++
++  const originalPushState = window.history.pushState.bind(window.history);
++  const originalReplaceState = window.history.replaceState.bind(window.history);
++
++  window.history.pushState = function (
++    state: unknown,
++    title: string,
++    url?: string | URL | null,
++  ) {
++    originalPushState(state, title, url);
++    HistoryBus.notify("PUSH", {
++      pathname: window.location.pathname,
++      search: window.location.search,
++      state: state as { key?: string; idx?: number } | null,
++    });
++  };
++
++  window.history.replaceState = function (
++    state: unknown,
++    title: string,
++    url?: string | URL | null,
++  ) {
++    originalReplaceState(state, title, url);
++    HistoryBus.notify("REPLACE", {
++      pathname: window.location.pathname,
++      search: window.location.search,
++      state: state as { key?: string; idx?: number } | null,
++    });
++  };
++
++  window.addEventListener("popstate", (event) => {
++    HistoryBus.notify("POP", {
++      pathname: window.location.pathname,
++      search: window.location.search,
++      state: event.state as { key?: string; idx?: number } | null,
++    });
++  });
++}

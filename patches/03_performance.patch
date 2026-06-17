@@ -1,0 +1,1014 @@
+diff --git a/webapp/app/routes/suche.angebot.$hotelId.tsx b/webapp/app/routes/suche.angebot.$hotelId.tsx
+index e0253d6..65d718a 100644
+--- a/webapp/app/routes/suche.angebot.$hotelId.tsx
++++ b/webapp/app/routes/suche.angebot.$hotelId.tsx
+@@ -1,6 +1,7 @@
+ import { useLoaderData } from "react-router";
+ import { useTranslation } from "react-i18next";
+-import { useEffect } from "react";
++import { useEffect, useRef } from "react";
++import { useWindowVirtualizer } from "@tanstack/react-virtual";
+ import { AppShell } from "~/components/app_shell";
+ import { Quickfilter } from "~/components/quickfilter";
+ import { OfferCard } from "~/components/offer_card";
+@@ -51,6 +52,14 @@ export default function OfferListPage() {
+     });
+   }, [setHeader, t, hotelName]);
+ 
++  const listRef = useRef<HTMLDivElement>(null);
++  const virtualizer = useWindowVirtualizer({
++    count: offers.length,
++    estimateSize: () => 100,
++    overscan: 2,
++    scrollMargin: listRef.current?.scrollTop ?? 0,
++  });
++
+   return (
+     <AppShell title={`${t("offerList.title")} – ${hotelName}`}>
+       <Quickfilter />
+@@ -59,10 +68,27 @@ export default function OfferListPage() {
+           ? t("offerList.results", { count: total })
+           : t("offerList.noResults")}
+       </div>
+-      <div>
+-        {offers.map((offer) => (
+-          <OfferCard key={offer.id} offer={offer} />
+-        ))}
++      <div ref={listRef}>
++        <div
++          style={{ height: virtualizer.getTotalSize(), position: "relative" }}
++        >
++          {virtualizer.getVirtualItems().map((vItem) => (
++            <div
++              key={vItem.key}
++              style={{
++                position: "absolute",
++                top: 0,
++                left: 0,
++                width: "100%",
++                transform: `translateY(${vItem.start}px)`,
++              }}
++              ref={virtualizer.measureElement}
++              data-index={vItem.index}
++            >
++              <OfferCard offer={offers[vItem.index]!} />
++            </div>
++          ))}
++        </div>
+       </div>
+     </AppShell>
+   );
+diff --git a/webapp/app/routes/suche.hotel.tsx b/webapp/app/routes/suche.hotel.tsx
+index 98b44fe..3b013e3 100644
+--- a/webapp/app/routes/suche.hotel.tsx
++++ b/webapp/app/routes/suche.hotel.tsx
+@@ -1,6 +1,7 @@
+ import { useLoaderData } from "react-router";
+ import { useTranslation } from "react-i18next";
+-import { useEffect } from "react";
++import { useEffect, useRef } from "react";
++import { useWindowVirtualizer } from "@tanstack/react-virtual";
+ import { AppShell } from "~/components/app_shell";
+ import { Quickfilter } from "~/components/quickfilter";
+ import { HotelCard } from "~/components/hotel_card";
+@@ -50,6 +51,14 @@ export default function HotelListPage() {
+     });
+   }, [setHeader, t]);
+ 
++  const listRef = useRef<HTMLDivElement>(null);
++  const virtualizer = useWindowVirtualizer({
++    count: hotels.length,
++    estimateSize: () => 120,
++    overscan: 2,
++    scrollMargin: listRef.current?.scrollTop ?? 0,
++  });
++
+   return (
+     <AppShell title={t("hotelList.title")}>
+       <Quickfilter />
+@@ -58,10 +67,27 @@ export default function HotelListPage() {
+           ? t("hotelList.results", { count: total })
+           : t("hotelList.noResults")}
+       </div>
+-      <div>
+-        {hotels.map((hotel) => (
+-          <HotelCard key={hotel.id} hotel={hotel} />
+-        ))}
++      <div ref={listRef}>
++        <div
++          style={{ height: virtualizer.getTotalSize(), position: "relative" }}
++        >
++          {virtualizer.getVirtualItems().map((vItem) => (
++            <div
++              key={vItem.key}
++              style={{
++                position: "absolute",
++                top: 0,
++                left: 0,
++                width: "100%",
++                transform: `translateY(${vItem.start}px)`,
++              }}
++              ref={virtualizer.measureElement}
++              data-index={vItem.index}
++            >
++              <HotelCard hotel={hotels[vItem.index]!} />
++            </div>
++          ))}
++        </div>
+       </div>
+     </AppShell>
+   );
+diff --git a/webapp/package.json b/webapp/package.json
+index 6676cdb..cfb7f17 100644
+--- a/webapp/package.json
++++ b/webapp/package.json
+@@ -7,11 +7,13 @@
+     "build": "react-router build",
+     "start": "NODE_ENV=production node build/server/index.js",
+     "typecheck": "react-router typegen && tsc",
+-    "typegen": "react-router typegen"
++    "typegen": "react-router typegen",
++    "compiler:check": "node scripts/check_compiler.mjs app/"
+   },
+   "dependencies": {
+     "@react-router/express": "^7.0.0",
+     "@react-router/node": "^7.0.0",
++    "@tanstack/react-virtual": "^3.0.0",
+     "accept-language-parser": "^1.5.0",
+     "compression": "^1.7.0",
+     "express": "^5.0.0",
+@@ -29,6 +31,10 @@
+     "zustand": "^5.0.0"
+   },
+   "devDependencies": {
++    "@babel/core": "^7.29.0",
++    "@babel/parser": "^7.29.3",
++    "@babel/preset-typescript": "^7.28.5",
++    "@babel/traverse": "^7.29.0",
+     "@react-router/dev": "^7.0.0",
+     "@tailwindcss/vite": "^4.0.0",
+     "@types/accept-language-parser": "^1.5.0",
+@@ -36,10 +42,13 @@
+     "@types/express": "^5.0.0",
+     "@types/react": "^19.0.0",
+     "@types/react-dom": "^19.0.0",
++    "babel-plugin-react-compiler": "^1.0.0",
++    "fast-glob": "^3.3.3",
+     "tailwindcss": "^4.0.0",
+     "tsx": "^4.0.0",
+     "typescript": "^5.7.0",
+     "vite": "^6.0.0",
++    "vite-plugin-babel": "^1.6.0",
+     "vite-tsconfig-paths": "^4.0.0"
+   },
+   "pnpm": {
+diff --git a/webapp/pnpm-lock.yaml b/webapp/pnpm-lock.yaml
+index cc35db4..0ec1fb2 100644
+--- a/webapp/pnpm-lock.yaml
++++ b/webapp/pnpm-lock.yaml
+@@ -14,6 +14,9 @@ importers:
+       '@react-router/node':
+         specifier: ^7.0.0
+         version: 7.13.2(react-router@7.13.2(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(typescript@5.9.3)
++      '@tanstack/react-virtual':
++        specifier: ^3.0.0
++        version: 3.13.23(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+       accept-language-parser:
+         specifier: ^1.5.0
+         version: 1.5.0
+@@ -60,6 +63,18 @@ importers:
+         specifier: ^5.0.0
+         version: 5.0.12(@types/react@19.2.14)(react@19.2.4)
+     devDependencies:
++      '@babel/core':
++        specifier: ^7.29.0
++        version: 7.29.0
++      '@babel/parser':
++        specifier: ^7.29.3
++        version: 7.29.3
++      '@babel/preset-typescript':
++        specifier: ^7.28.5
++        version: 7.28.5(@babel/core@7.29.0)
++      '@babel/traverse':
++        specifier: ^7.29.0
++        version: 7.29.0
+       '@react-router/dev':
+         specifier: ^7.0.0
+         version: 7.13.2(@types/node@25.5.0)(jiti@2.6.1)(lightningcss@1.32.0)(react-router@7.13.2(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(tsx@4.21.0)(typescript@5.9.3)(vite@6.4.1(@types/node@25.5.0)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.21.0))
+@@ -81,6 +96,12 @@ importers:
+       '@types/react-dom':
+         specifier: ^19.0.0
+         version: 19.2.3(@types/react@19.2.14)
++      babel-plugin-react-compiler:
++        specifier: ^1.0.0
++        version: 1.0.0
++      fast-glob:
++        specifier: ^3.3.3
++        version: 3.3.3
+       tailwindcss:
+         specifier: ^4.0.0
+         version: 4.2.2
+@@ -93,6 +114,9 @@ importers:
+       vite:
+         specifier: ^6.0.0
+         version: 6.4.1(@types/node@25.5.0)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.21.0)
++      vite-plugin-babel:
++        specifier: ^1.6.0
++        version: 1.6.0(@babel/core@7.29.0)(vite@6.4.1(@types/node@25.5.0)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.21.0))
+       vite-tsconfig-paths:
+         specifier: ^4.0.0
+         version: 4.3.2(typescript@5.9.3)(vite@6.4.1(@types/node@25.5.0)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.21.0))
+@@ -563,6 +587,18 @@ packages:
+   '@mjackson/node-fetch-server@0.2.0':
+     resolution: {integrity: sha512-EMlH1e30yzmTpGLQjlFmaDAjyOeZhng1/XCd7DExR8PNAnG/G1tyruZxEoUe11ClnwGhGrtsdnyyUx1frSzjng==}
+ 
++  '@nodelib/fs.scandir@2.1.5':
++    resolution: {integrity: sha512-vq24Bq3ym5HEQm2NKCr3yXDwjc7vTsEThRDnkp2DK9p1uqLR+DHurm/NOTo0KG7HYHU7eppKZj3MyqYuMBf62g==}
++    engines: {node: '>= 8'}
++
++  '@nodelib/fs.stat@2.0.5':
++    resolution: {integrity: sha512-RkhPPp2zrqDAQA/2jNhnztcPAlv64XdhIp7a7454A5ovI7Bukxgt7MX7udwAu3zg1DcpPU0rz3VV1SeaqvY4+A==}
++    engines: {node: '>= 8'}
++
++  '@nodelib/fs.walk@1.2.8':
++    resolution: {integrity: sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg==}
++    engines: {node: '>= 8'}
++
+   '@react-router/dev@7.13.2':
+     resolution: {integrity: sha512-8Lgf+WCEIPDhp22YB3fyoiWnNyM39sjkfWnSxAwy+Sg83OHxnQFQg0OK1oPM9lm1n/hxJe4lLYOPNwDSyeGiog==}
+     engines: {node: '>=20.0.0'}
+@@ -826,6 +862,15 @@ packages:
+     peerDependencies:
+       vite: ^5.2.0 || ^6 || ^7 || ^8
+ 
++  '@tanstack/react-virtual@3.13.23':
++    resolution: {integrity: sha512-XnMRnHQ23piOVj2bzJqHrRrLg4r+F86fuBcwteKfbIjJrtGxb4z7tIvPVAe4B+4UVwo9G4Giuz5fmapcrnZ0OQ==}
++    peerDependencies:
++      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
++      react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
++
++  '@tanstack/virtual-core@3.13.23':
++    resolution: {integrity: sha512-zSz2Z2HNyLjCplANTDyl3BcdQJc2k1+yyFoKhNRmCr7V7dY8o8q5m8uFTI1/Pg1kL+Hgrz6u3Xo6eFUB7l66cg==}
++
+   '@types/accept-language-parser@1.5.8':
+     resolution: {integrity: sha512-6+dKdh9q/I8xDBnKQKddCBKaWBWLmJ97HTiSbAXVpL7LEgDfOkKF98UVCaZ5KJrtdN5Wa5ndXUiqD3XR9XGqWQ==}
+ 
+@@ -886,6 +931,9 @@ packages:
+   babel-dead-code-elimination@1.0.12:
+     resolution: {integrity: sha512-GERT7L2TiYcYDtYk1IpD+ASAYXjKbLTDPhBtYj7X1NuRMDTMtAx9kyBenub1Ev41lo91OHCKdmP+egTDmfQ7Ig==}
+ 
++  babel-plugin-react-compiler@1.0.0:
++    resolution: {integrity: sha512-Ixm8tFfoKKIPYdCCKYTsqv+Fd4IJ0DQqMyEimo+pxUOMUR9cVPlwTrFt9Avu+3cb6Zp3mAzl+t1MrG2fxxKsxw==}
++
+   baseline-browser-mapping@2.10.12:
+     resolution: {integrity: sha512-qyq26DxfY4awP2gIRXhhLWfwzwI+N5Nxk6iQi8EFizIaWIjqicQTE4sLnZZVdeKPRcVNoJOkkpfzoIYuvCKaIQ==}
+     engines: {node: '>=6.0.0'}
+@@ -895,6 +943,10 @@ packages:
+     resolution: {integrity: sha512-oP5VkATKlNwcgvxi0vM0p/D3n2C3EReYVX+DNYs5TjZFn/oQt2j+4sVJtSMr18pdRr8wjTcBl6LoV+FUwzPmNA==}
+     engines: {node: '>=18'}
+ 
++  braces@3.0.3:
++    resolution: {integrity: sha512-yQbXgO/OSZVD2IsiLlro+7Hf6Q18EJrKSEsdoMzKePKXct3gvD8oLcOQdIzGupr5Fj+EDe8gO/lxc1BzfMpxvA==}
++    engines: {node: '>=8'}
++
+   browserslist@4.28.1:
+     resolution: {integrity: sha512-ZC5Bd0LgJXgwGqUknZY/vkUQ04r8NXnJZ3yYi4vDmSiZmC/pdSN0NbNRPxZpbtO4uAfDUAFffO8IZoM3Gj8IkA==}
+     engines: {node: ^6 || ^7 || ^8 || ^9 || ^10 || ^11 || ^12 || >=13.7}
+@@ -1061,6 +1113,13 @@ packages:
+   exsolve@1.0.8:
+     resolution: {integrity: sha512-LmDxfWXwcTArk8fUEnOfSZpHOJ6zOMUJKOtFLFqJLoKJetuQG874Uc7/Kki7zFLzYybmZhp1M7+98pfMqeX8yA==}
+ 
++  fast-glob@3.3.3:
++    resolution: {integrity: sha512-7MptL8U0cqcFdzIzwOTHoilX9x5BrNqye7Z/LuC7kCMRio1EMSyqRK3BEAUD7sXRq4iT4AzTVuZdhgQ2TCvYLg==}
++    engines: {node: '>=8.6.0'}
++
++  fastq@1.20.1:
++    resolution: {integrity: sha512-GGToxJ/w1x32s/D2EKND7kTil4n8OVk/9mycTc4VDza13lOvpUZTGX3mFSCtV9ksdGBVzvsyAVLM6mHFThxXxw==}
++
+   fdir@6.5.0:
+     resolution: {integrity: sha512-tIbYtZbucOs0BRGqPJkshJUYdL+SDH7dVM8gjy+ERp3WAUjLEFJE+02kanyHtwjWOnwrKYBiwAmM0p4kLJAnXg==}
+     engines: {node: '>=12.0.0'}
+@@ -1070,6 +1129,10 @@ packages:
+       picomatch:
+         optional: true
+ 
++  fill-range@7.1.1:
++    resolution: {integrity: sha512-YsGpe3WHLK8ZYi4tWDg2Jy3ebRz2rXowDxnld4bkQB00cc/1Zw9AWnC0i9ztDJitivtQvaI9KaLyKrc+hBW0yg==}
++    engines: {node: '>=8'}
++
+   finalhandler@2.1.1:
+     resolution: {integrity: sha512-S8KoZgRZN+a5rNwqTxlZZePjT/4cnm0ROV70LedRHZ0p8u9fRID0hJUZQpkKLzro8LfmC8sx23bY6tVNxv8pQA==}
+     engines: {node: '>= 18.0.0'}
+@@ -1105,6 +1168,10 @@ packages:
+   get-tsconfig@4.13.7:
+     resolution: {integrity: sha512-7tN6rFgBlMgpBML5j8typ92BKFi2sFQvIdpAqLA2beia5avZDrMs0FLZiM5etShWq5irVyGcGMEA1jcDaK7A/Q==}
+ 
++  glob-parent@5.1.2:
++    resolution: {integrity: sha512-AOIgSQCepiJYwP3ARnGx+5VnTu2HBYdzbGP45eLw1vr3zB3vZLeyed1sC9hnbcOc9/SrMyM5RPQrkGz4aS9Zow==}
++    engines: {node: '>= 6'}
++
+   globrex@0.1.2:
+     resolution: {integrity: sha512-uHJgbwAMwNFf5mLst7IWLNg14x1CkeqglJb/K3doi4dw6q2IvAAmM/Y81kevy83wP+Sst+nutFTYOGg3d1lsxg==}
+ 
+@@ -1161,6 +1228,18 @@ packages:
+     resolution: {integrity: sha512-0KI/607xoxSToH7GjN1FfSbLoU0+btTicjsQSWQlh/hZykN8KpmMf7uYwPW3R+akZ6R/w18ZlXSHBYXiYUPO3g==}
+     engines: {node: '>= 0.10'}
+ 
++  is-extglob@2.1.1:
++    resolution: {integrity: sha512-SbKbANkN603Vi4jEZv49LeVJMn4yGwsbzZworEoyEiutsN3nJYdbO36zfhGJ6QEDpOZIFkDtnq5JRxmvl3jsoQ==}
++    engines: {node: '>=0.10.0'}
++
++  is-glob@4.0.3:
++    resolution: {integrity: sha512-xelSayHH36ZgE7ZWhli7pW34hNbNl8Ojv5KVmkJD4hBdD3th8Tfk9vYasLM+mXWOZhFkgZfxhLSnrwRr4elSSg==}
++    engines: {node: '>=0.10.0'}
++
++  is-number@7.0.0:
++    resolution: {integrity: sha512-41Cifkg6e8TylSpdtTpeLVMqvSBEVzTttHvERD741+pnZ8ANv0004MRL43QKPDlK9cGvNp6NZWZUBlbGXYxxng==}
++    engines: {node: '>=0.12.0'}
++
+   is-promise@4.0.0:
+     resolution: {integrity: sha512-hvpoI6korhJMnej285dSg6nu1+e6uxs7zG3BYAm5byqDsgJNWwxzM6z6iZiAgQR4TJ30JmBTOwqZUw3WlyH3AQ==}
+ 
+@@ -1276,6 +1355,14 @@ packages:
+     resolution: {integrity: sha512-Snk314V5ayFLhp3fkUREub6WtjBfPdCPY1Ln8/8munuLuiYhsABgBVWsozAG+MWMbVEvcdcpbi9R7ww22l9Q3g==}
+     engines: {node: '>=18'}
+ 
++  merge2@1.4.1:
++    resolution: {integrity: sha512-8q7VEgMJW4J8tcfVPy8g09NcQwZdbwFEqhe/WZkoIzjn/3TGDwtOCYtXGxA3O8tPzpczCCDgv+P2P5y00ZJOOg==}
++    engines: {node: '>= 8'}
++
++  micromatch@4.0.8:
++    resolution: {integrity: sha512-PXwfBhYu0hBCPw8Dn0E+WDYb7af3dSLVWKi3HGv84IdF4TyFoC0ysxFd0Goxw7nSv4T/PzEJQxsYsEiFCKo2BA==}
++    engines: {node: '>=8.6'}
++
+   mime-db@1.54.0:
+     resolution: {integrity: sha512-aU5EJuIN2WDemCcAp2vFBfp/m4EAhWJnUNSSw0ixs7/kXbd6Pg64EmwJkNdFhB8aWt1sH2CTXrLxo/iAGV3oPQ==}
+     engines: {node: '>= 0.6'}
+@@ -1350,6 +1437,10 @@ packages:
+   picocolors@1.1.1:
+     resolution: {integrity: sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==}
+ 
++  picomatch@2.3.2:
++    resolution: {integrity: sha512-V7+vQEJ06Z+c5tSye8S+nHUfI51xoXIXjHQ99cQtKUkQqqO1kO/KCJUfZXuB47h/YBlDhah2H3hdUGXn8ie0oA==}
++    engines: {node: '>=8.6'}
++
+   picomatch@4.0.4:
+     resolution: {integrity: sha512-QP88BAKvMam/3NxH6vj2o21R6MjxZUAd6nlwAS/pnGvN9IVLocLHxGYIzFhg6fUQ+5th6P4dv4eW9jX3DSIj7A==}
+     engines: {node: '>=12'}
+@@ -1374,6 +1465,9 @@ packages:
+     resolution: {integrity: sha512-mAZTtNCeetKMH+pSjrb76NAM8V9a05I9aBZOHztWy/UqcJdQYNsf59vrRKWnojAT9Y+GbIvoTBC++CPHqpDBhQ==}
+     engines: {node: '>=0.6'}
+ 
++  queue-microtask@1.2.3:
++    resolution: {integrity: sha512-NuaNSa6flKT5JaSYQzJok04JzTL1CA6aGhv5rfLW3PgqA+M2ChpZQnAC8h8i4ZFkBS8X5RqkDBHA7r4hej3K9A==}
++
+   range-parser@1.2.1:
+     resolution: {integrity: sha512-Hrgsx+orqoygnmhFbKaHE6c296J+HTAQXoxEF6gNupROmmGJRoyzfG3ccAveqCBrwr/2yxQ5BVd/GTl5agOwSg==}
+     engines: {node: '>= 0.6'}
+@@ -1437,6 +1531,10 @@ packages:
+   resolve-pkg-maps@1.0.0:
+     resolution: {integrity: sha512-seS2Tj26TBVOC2NIc2rOe2y2ZO7efxITtLZcGSOnHHNOQ7CkiUBfw0Iw2ck6xkIhPwLhKNLS8BO+hEpngQlqzw==}
+ 
++  reusify@1.1.0:
++    resolution: {integrity: sha512-g6QUff04oZpHs0eG5p83rFLhHeV00ug/Yf9nZM6fLeUrPguBTkTQOdpAWWspMh55TZfVQDPaN3NQJfbVRAxdIw==}
++    engines: {iojs: '>=1.0.0', node: '>=0.10.0'}
++
+   rollup@4.60.1:
+     resolution: {integrity: sha512-VmtB2rFU/GroZ4oL8+ZqXgSA38O6GR8KSIvWmEFv63pQ0G6KaBH9s07PO8XTXP4vI+3UJUEypOfjkGfmSBBR0w==}
+     engines: {node: '>=18.0.0', npm: '>=8.0.0'}
+@@ -1446,6 +1544,9 @@ packages:
+     resolution: {integrity: sha512-nLTrUKm2UyiL7rlhapu/Zl45FwNgkZGaCpZbIHajDYgwlJCOzLSk+cIPAnsEqV955GjILJnKbdQC1nVPz+gAYQ==}
+     engines: {node: '>= 18'}
+ 
++  run-parallel@1.2.0:
++    resolution: {integrity: sha512-5l4VyZR86LZ/lDxZTR6jqL8AFE2S0IFLMP26AbjsLVADxHdhB/c0GUsH+y39UfCi3dzz8OlQuPmnaJOMoDHQBA==}
++
+   safe-buffer@5.2.1:
+     resolution: {integrity: sha512-rp3So07KcdmmKbGvgaNxQSJr7bGVSVk5S9Eq1F+ppbRo70+YeaDxkw5Dd8NPN+GD6bjnYm2VuPuCXmpuYvmCXQ==}
+ 
+@@ -1513,6 +1614,10 @@ packages:
+     resolution: {integrity: sha512-j2Zq4NyQYG5XMST4cbs02Ak8iJUdxRM0XI5QyxXuZOzKOINmWurp3smXu3y5wDcJrptwpSjgXHzIQxR0omXljQ==}
+     engines: {node: '>=12.0.0'}
+ 
++  to-regex-range@5.0.1:
++    resolution: {integrity: sha512-65P7iz6X5yEr1cwcgvQxbbIw7Uk3gOy5dIdtZ4rDveLqhrdJP+Li/Hx6tyK0NEb+2GCyneCMJiGqrADCSNk8sQ==}
++    engines: {node: '>=8.0'}
++
+   toidentifier@1.0.1:
+     resolution: {integrity: sha512-o5sSPKEkg/DIQNmH43V0/uerLrpzVedkUh8tGNvaeXpfpuwjKenlSox/2O/BTlZUtEe+JG7s5YhEz608PlAHRA==}
+     engines: {node: '>=0.6'}
+@@ -1574,6 +1679,12 @@ packages:
+     engines: {node: ^18.0.0 || ^20.0.0 || >=22.0.0}
+     hasBin: true
+ 
++  vite-plugin-babel@1.6.0:
++    resolution: {integrity: sha512-VtYA4FSmQREA2oaZ7+jfLS/fBk1/xZMUR94YZzB5s6U9WyptbvThUD1HSSv7oNDU28jGuHmdBZ1wTVGNIoChoQ==}
++    peerDependencies:
++      '@babel/core': ^7.0.0
++      vite: ^2.7.0 || ^3.0.0 || ^4.0.0 || ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0
++
+   vite-tsconfig-paths@4.3.2:
+     resolution: {integrity: sha512-0Vd/a6po6Q+86rPlntHye7F31zA2URZMbH8M3saAZ/xR9QoGN/L21bxEGfXdWmFdNkqPpRdxFT7nmNe12e9/uA==}
+     peerDependencies:
+@@ -2023,6 +2134,18 @@ snapshots:
+ 
+   '@mjackson/node-fetch-server@0.2.0': {}
+ 
++  '@nodelib/fs.scandir@2.1.5':
++    dependencies:
++      '@nodelib/fs.stat': 2.0.5
++      run-parallel: 1.2.0
++
++  '@nodelib/fs.stat@2.0.5': {}
++
++  '@nodelib/fs.walk@1.2.8':
++    dependencies:
++      '@nodelib/fs.scandir': 2.1.5
++      fastq: 1.20.1
++
+   '@react-router/dev@7.13.2(@types/node@25.5.0)(jiti@2.6.1)(lightningcss@1.32.0)(react-router@7.13.2(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(tsx@4.21.0)(typescript@5.9.3)(vite@6.4.1(@types/node@25.5.0)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.21.0))':
+     dependencies:
+       '@babel/core': 7.29.0
+@@ -2232,6 +2355,14 @@ snapshots:
+       tailwindcss: 4.2.2
+       vite: 6.4.1(@types/node@25.5.0)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.21.0)
+ 
++  '@tanstack/react-virtual@3.13.23(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
++    dependencies:
++      '@tanstack/virtual-core': 3.13.23
++      react: 19.2.4
++      react-dom: 19.2.4(react@19.2.4)
++
++  '@tanstack/virtual-core@3.13.23': {}
++
+   '@types/accept-language-parser@1.5.8': {}
+ 
+   '@types/body-parser@1.19.6':
+@@ -2308,6 +2439,10 @@ snapshots:
+     transitivePeerDependencies:
+       - supports-color
+ 
++  babel-plugin-react-compiler@1.0.0:
++    dependencies:
++      '@babel/types': 7.29.0
++
+   baseline-browser-mapping@2.10.12: {}
+ 
+   body-parser@2.2.2:
+@@ -2324,6 +2459,10 @@ snapshots:
+     transitivePeerDependencies:
+       - supports-color
+ 
++  braces@3.0.3:
++    dependencies:
++      fill-range: 7.1.1
++
+   browserslist@4.28.1:
+     dependencies:
+       baseline-browser-mapping: 2.10.12
+@@ -2532,10 +2671,26 @@ snapshots:
+ 
+   exsolve@1.0.8: {}
+ 
++  fast-glob@3.3.3:
++    dependencies:
++      '@nodelib/fs.stat': 2.0.5
++      '@nodelib/fs.walk': 1.2.8
++      glob-parent: 5.1.2
++      merge2: 1.4.1
++      micromatch: 4.0.8
++
++  fastq@1.20.1:
++    dependencies:
++      reusify: 1.1.0
++
+   fdir@6.5.0(picomatch@4.0.4):
+     optionalDependencies:
+       picomatch: 4.0.4
+ 
++  fill-range@7.1.1:
++    dependencies:
++      to-regex-range: 5.0.1
++
+   finalhandler@2.1.1:
+     dependencies:
+       debug: 4.4.3
+@@ -2580,6 +2735,10 @@ snapshots:
+     dependencies:
+       resolve-pkg-maps: 1.0.0
+ 
++  glob-parent@5.1.2:
++    dependencies:
++      is-glob: 4.0.3
++
+   globrex@0.1.2: {}
+ 
+   gopd@1.2.0: {}
+@@ -2632,6 +2791,14 @@ snapshots:
+ 
+   ipaddr.js@1.9.1: {}
+ 
++  is-extglob@2.1.1: {}
++
++  is-glob@4.0.3:
++    dependencies:
++      is-extglob: 2.1.1
++
++  is-number@7.0.0: {}
++
+   is-promise@4.0.0: {}
+ 
+   isbot@5.1.36: {}
+@@ -2709,6 +2876,13 @@ snapshots:
+ 
+   merge-descriptors@2.0.0: {}
+ 
++  merge2@1.4.1: {}
++
++  micromatch@4.0.8:
++    dependencies:
++      braces: 3.0.3
++      picomatch: 2.3.2
++
+   mime-db@1.54.0: {}
+ 
+   mime-types@3.0.2:
+@@ -2755,6 +2929,8 @@ snapshots:
+ 
+   picocolors@1.1.1: {}
+ 
++  picomatch@2.3.2: {}
++
+   picomatch@4.0.4: {}
+ 
+   pkg-types@2.3.0:
+@@ -2780,6 +2956,8 @@ snapshots:
+     dependencies:
+       side-channel: 1.1.0
+ 
++  queue-microtask@1.2.3: {}
++
+   range-parser@1.2.1: {}
+ 
+   raw-body@3.0.2:
+@@ -2827,6 +3005,8 @@ snapshots:
+ 
+   resolve-pkg-maps@1.0.0: {}
+ 
++  reusify@1.1.0: {}
++
+   rollup@4.60.1:
+     dependencies:
+       '@types/estree': 1.0.8
+@@ -2868,6 +3048,10 @@ snapshots:
+     transitivePeerDependencies:
+       - supports-color
+ 
++  run-parallel@1.2.0:
++    dependencies:
++      queue-microtask: 1.2.3
++
+   safe-buffer@5.2.1: {}
+ 
+   safer-buffer@2.1.2: {}
+@@ -2948,6 +3132,10 @@ snapshots:
+       fdir: 6.5.0(picomatch@4.0.4)
+       picomatch: 4.0.4
+ 
++  to-regex-range@5.0.1:
++    dependencies:
++      is-number: 7.0.0
++
+   toidentifier@1.0.1: {}
+ 
+   tr46@0.0.3: {}
+@@ -3008,6 +3196,11 @@ snapshots:
+       - tsx
+       - yaml
+ 
++  vite-plugin-babel@1.6.0(@babel/core@7.29.0)(vite@6.4.1(@types/node@25.5.0)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.21.0)):
++    dependencies:
++      '@babel/core': 7.29.0
++      vite: 6.4.1(@types/node@25.5.0)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.21.0)
++
+   vite-tsconfig-paths@4.3.2(typescript@5.9.3)(vite@6.4.1(@types/node@25.5.0)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.21.0)):
+     dependencies:
+       debug: 4.4.3
+diff --git a/webapp/scripts/check_compiler.mjs b/webapp/scripts/check_compiler.mjs
+new file mode 100644
+index 0000000..a9a497a
+--- /dev/null
++++ b/webapp/scripts/check_compiler.mjs
+@@ -0,0 +1,385 @@
++/**
++ * React Compiler compatibility checker.
++ *
++ * Runs `babel-plugin-react-compiler` in dry-run mode (`noEmit`) against
++ * every `.ts`/`.tsx` file in the given path and reports which functions
++ * the compiler can optimise, which it skips, and which cause errors.
++ *
++ * @example
++ *   node scripts/check_compiler.mjs app/routes/suche/   # violations only
++ *   node scripts/check_compiler.mjs --verbose app/      # all findings
++ *
++ * Flags:
++ *   --verbose, -v   Show all findings including successful compilations.
++ *                    Default behaviour shows violations only (errors / skips).
++ *
++ * Exit codes:
++ *   0 — no compilation errors
++ *   1 — one or more compilation errors detected
++ *   2 — invalid usage (missing path argument)
++ */
++
++/* eslint-disable no-console */
++import { readFileSync, statSync } from 'node:fs';
++import { resolve, relative } from 'node:path';
++
++import { transformFromAstSync } from '@babel/core';
++import { parse } from '@babel/parser';
++import _traverse from '@babel/traverse';
++import fg from 'fast-glob';
++
++const traverse = _traverse.default ?? _traverse;
++
++const RESET = '\x1b[0m';
++const GREEN = '\x1b[32m';
++const RED = '\x1b[31m';
++const YELLOW = '\x1b[33m';
++const DIM = '\x1b[2m';
++const BOLD = '\x1b[1m';
++
++const argv = process.argv.slice(2);
++const verbose = argv.includes('--verbose') || argv.includes('-v');
++const targetPath = argv.find(arg => !arg.startsWith('-'));
++if (!targetPath) {
++    console.error(
++        `${RED}Usage: node scripts/check_compiler.mjs [--verbose] <path>${RESET}`,
++    );
++    console.error(
++        '  --verbose, -v  show all findings (default: violations only)',
++    );
++    console.error(
++        '  e.g. node scripts/check_compiler.mjs app/routes/suche/angebot/components/price_calendar/',
++    );
++    process.exit(2);
++}
++
++const cwd = process.cwd();
++const resolvedTarget = resolve(cwd, targetPath);
++
++const stat = statSync(resolvedTarget, { throwIfNoEntry: false });
++
++if (!stat) {
++    console.error(`${RED}Path does not exist: ${targetPath}${RESET}`);
++    process.exit(2);
++}
++
++const isSingleFile = stat.isFile();
++
++const files = isSingleFile
++    ? [resolvedTarget]
++    : fg.sync(['**/*.{ts,tsx}'], {
++          cwd: resolvedTarget,
++          absolute: true,
++          ignore: ['**/node_modules/**', '**/proto/**', '**/.react-router/**'],
++      });
++
++if (files.length === 0) {
++    console.error(`${YELLOW}No .ts/.tsx files found in ${targetPath}${RESET}`);
++    process.exit(0);
++}
++
++const totals = { success: 0, error: 0, skip: 0 };
++const fileResults = [];
++
++for (const filePath of files) {
++    const relPath = relative(cwd, filePath);
++    const source = readFileSync(filePath, 'utf-8');
++
++    let ast;
++    try {
++        ast = parse(source, {
++            sourceType: 'module',
++            plugins: ['typescript', 'jsx'],
++            sourceFilename: filePath,
++        });
++    } catch {
++        fileResults.push({
++            file: relPath,
++            events: [{ kind: 'ParseError', detail: 'Failed to parse file' }],
++        });
++        continue;
++    }
++
++    const nameMap = buildNameMap(ast);
++    const events = [];
++
++    const logger = {
++        logEvent(_filename, event) {
++            events.push(event);
++        },
++    };
++
++    try {
++        transformFromAstSync(ast, source, {
++            filename: filePath,
++            highlightCode: false,
++            retainLines: true,
++            plugins: [
++                [
++                    'babel-plugin-react-compiler',
++                    {
++                        noEmit: true,
++                        panicThreshold: 'none',
++                        logger,
++                    },
++                ],
++            ],
++            presets: ['@babel/preset-typescript'],
++            sourceType: 'module',
++            configFile: false,
++            babelrc: false,
++        });
++    } catch {
++        // errors captured by logger
++    }
++
++    fileResults.push({ file: relPath, events, nameMap });
++}
++
++const VIOLATION_KINDS = new Set([
++    'CompileError',
++    'CompileSkip',
++    'PipelineError',
++    'ParseError',
++]);
++
++for (const { file, events, nameMap } of fileResults) {
++    const relevant = events.filter(
++        event =>
++            event.kind === 'CompileSuccess' ||
++            event.kind === 'CompileError' ||
++            event.kind === 'CompileSkip' ||
++            event.kind === 'PipelineError' ||
++            event.kind === 'ParseError',
++    );
++
++    const fileCounts = countByKind(relevant);
++    totals.success += fileCounts.success;
++    totals.error += fileCounts.error;
++    totals.skip += fileCounts.skip;
++
++    const toShow = verbose
++        ? relevant
++        : relevant.filter(event => VIOLATION_KINDS.has(event.kind));
++
++    if (toShow.length === 0) {
++        continue;
++    }
++
++    const badge = formatFileBadge(fileCounts);
++    console.log(`\n${BOLD}${file}${RESET}  ${badge}`);
++
++    for (const event of toShow) {
++        if (event.kind === 'CompileSuccess') {
++            const name = resolveName(event.fnName, event.fnLoc, nameMap);
++            const loc = formatLoc(event.fnLoc);
++            const slots = event.memoSlots ?? 0;
++            console.log(
++                `  ${GREEN}✓${RESET} ${name} ${DIM}${loc}${RESET} ${DIM}(${slots} memo slots)${RESET}`,
++            );
++        } else if (event.kind === 'CompileError') {
++            const name = resolveName(event.fnName, event.fnLoc, nameMap);
++            const reason = event.detail?.reason ?? 'unknown';
++            const loc = formatLoc(event.detail?.loc ?? event.fnLoc);
++            console.log(
++                `  ${RED}✗${RESET} ${name} ${RED}${reason}${RESET} ${DIM}${loc}${RESET}`,
++            );
++            if (event.detail?.description) {
++                console.log(`    ${DIM}${event.detail.description}${RESET}`);
++            }
++        } else if (event.kind === 'CompileSkip') {
++            const name = resolveName(
++                event.fnName,
++                event.fnLoc ?? event.loc,
++                nameMap,
++            );
++            const reason = event.reason ?? 'unknown';
++            const loc = formatLoc(event.loc ?? event.fnLoc);
++            console.log(
++                `  ${YELLOW}⊘${RESET} ${name} ${YELLOW}skip: ${reason}${RESET} ${DIM}${loc}${RESET}`,
++            );
++        } else if (event.kind === 'PipelineError') {
++            console.log(`  ${RED}✗ pipeline error: ${event.data}${RESET}`);
++        } else if (event.kind === 'ParseError') {
++            console.log(`  ${RED}✗ ${event.detail}${RESET}`);
++        }
++    }
++}
++
++console.log(
++    `\n${BOLD}Summary${RESET}: ${GREEN}${totals.success} compiled${RESET}, ${RED}${totals.error} errors${RESET}, ${YELLOW}${totals.skip} skipped${RESET}`,
++);
++
++if (totals.error > 0) {
++    process.exit(1);
++}
++
++/**
++ * Counts compiler events by category for a single file.
++ *
++ * @param {Array<{kind: string}>} events  Relevant compiler events.
++ * @returns {{success: number, error: number, skip: number}}
++ */
++function countByKind(events) {
++    const counts = { success: 0, error: 0, skip: 0 };
++    for (const event of events) {
++        if (event.kind === 'CompileSuccess') {
++            counts.success++;
++        } else if (
++            event.kind === 'CompileError' ||
++            event.kind === 'PipelineError' ||
++            event.kind === 'ParseError'
++        ) {
++            counts.error++;
++        } else if (event.kind === 'CompileSkip') {
++            counts.skip++;
++        }
++    }
++
++    return counts;
++}
++
++/**
++ * Formats a coloured per-file summary badge.
++ *
++ * @example "3 errors, 2 skipped, 5 compiled"
++ *
++ * @param {{success: number, error: number, skip: number}} counts
++ * @returns {string}
++ */
++function formatFileBadge(counts) {
++    const parts = [];
++    if (counts.error > 0) {
++        parts.push(
++            `${RED}${counts.error} error${counts.error === 1 ? '' : 's'}${RESET}`,
++        );
++    }
++    if (counts.skip > 0) {
++        parts.push(`${YELLOW}${counts.skip} skipped${RESET}`);
++    }
++    if (counts.success > 0) {
++        parts.push(`${GREEN}${counts.success} compiled${RESET}`);
++    }
++    const separator = `${DIM}, ${RESET}`;
++
++    return `${DIM}(${RESET}${parts.join(separator)}${DIM})${RESET}`;
++}
++
++/**
++ * Formats a Babel source location into a human-readable `(line:col)` string.
++ *
++ * @param {import('@babel/types').SourceLocation | null | undefined} loc
++ * @returns {string} Formatted location or empty string when unavailable.
++ */
++function formatLoc(loc) {
++    if (!loc) {
++        return '';
++    }
++    if (loc.start) {
++        return `(${loc.start.line}:${loc.start.column})`;
++    }
++
++    return '';
++}
++
++/**
++ * Creates a unique string key from a Babel source location.
++ * Used as the key for {@link buildNameMap} lookups.
++ *
++ * @param {import('@babel/types').SourceLocation} loc
++ * @returns {string} Key in the form `"line:column"`.
++ */
++function locKey(loc) {
++    return `${loc.start.line}:${loc.start.column}`;
++}
++
++/**
++ * Traverses the AST to build a mapping from source locations to
++ * human-readable function names.
++ *
++ * The React Compiler plugin reports anonymous arrow functions / function
++ * expressions without a name. This map lets us recover the name from:
++ * - Variable declarations  (`const Foo = () => {}`)
++ * - Default exports        (`export default () => {}` -> `"default export"`)
++ * - Member assignments     (`obj.bar = () => {}` -> `"bar"`)
++ *
++ * @param {import('@babel/types').File} ast  Parsed Babel AST.
++ * @returns {Map<string, string>} Map of `locKey` -> display name.
++ */
++function buildNameMap(ast) {
++    const map = new Map();
++
++    traverse(ast, {
++        VariableDeclarator(path) {
++            const init = path.get('init');
++            if (
++                !init.isArrowFunctionExpression() &&
++                !init.isFunctionExpression()
++            ) {
++                return;
++            }
++            const idNode = path.node.id;
++            if (idNode?.type === 'Identifier' && init.node.loc) {
++                map.set(locKey(init.node.loc), idNode.name);
++            }
++        },
++        ExportDefaultDeclaration(path) {
++            const decl = path.get('declaration');
++            if (
++                !decl.isArrowFunctionExpression() &&
++                !decl.isFunctionExpression()
++            ) {
++                return;
++            }
++            if (decl.node.loc) {
++                map.set(locKey(decl.node.loc), 'default export');
++            }
++        },
++        AssignmentExpression(path) {
++            const right = path.get('right');
++            if (
++                !right.isArrowFunctionExpression() &&
++                !right.isFunctionExpression()
++            ) {
++                return;
++            }
++            const left = path.node.left;
++            if (left?.type === 'MemberExpression' && right.node.loc) {
++                const prop = left.property;
++                const name =
++                    prop.type === 'Identifier' ? prop.name : String(prop.value);
++                map.set(locKey(right.node.loc), name);
++            }
++        },
++    });
++
++    return map;
++}
++
++/**
++ * Resolves a display name for a compiled function.
++ *
++ * Falls back through three sources in order:
++ * 1. The name provided by the compiler plugin (`fnName`).
++ * 2. A lookup in the {@link buildNameMap} result via the function's location.
++ * 3. `"<anonymous>"` as a last resort.
++ *
++ * @param {string | undefined} fnName  Name reported by the compiler plugin.
++ * @param {import('@babel/types').SourceLocation | undefined} fnLoc  Source location of the function.
++ * @param {Map<string, string>} nameMap  Map built by {@link buildNameMap}.
++ * @returns {string} Human-readable function name.
++ */
++function resolveName(fnName, fnLoc, nameMap) {
++    if (fnName) {
++        return fnName;
++    }
++    if (fnLoc) {
++        const resolved = nameMap.get(locKey(fnLoc));
++        if (resolved) {
++            return resolved;
++        }
++    }
++
++    return '<anonymous>';
++}
++
+diff --git a/webapp/vite.config.ts b/webapp/vite.config.ts
+index f1c8c00..142bb17 100644
+--- a/webapp/vite.config.ts
++++ b/webapp/vite.config.ts
+@@ -2,6 +2,7 @@ import { reactRouter } from "@react-router/dev/vite";
+ import tailwindcss from "@tailwindcss/vite";
+ import tsconfigPaths from "vite-tsconfig-paths";
+ import { defineConfig } from "vite";
++import babel from 'vite-plugin-babel';
+ 
+ export default defineConfig(({ mode }) => ({
+   build: {
+@@ -12,6 +13,14 @@ export default defineConfig(({ mode }) => ({
+   plugins: [
+     tailwindcss(),
+     reactRouter(),
++    babel({
++      include: /\.[jt]sx?$/,
++      babelConfig: {
++        presets: ['@babel/preset-typescript'],
++        plugins: [['babel-plugin-react-compiler']],
++        sourceMaps: true,
++      },
++    }),
+     tsconfigPaths(),
+   ],
+   server: {
