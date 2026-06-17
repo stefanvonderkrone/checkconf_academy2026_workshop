@@ -1,37 +1,43 @@
 # WebApp Demo
 
-Demo-Projekt: Web-Anwendung die das UI einer Smartphone-App nachbildet.
+Demo project: web application that recreates the UI of a smartphone app.
 
-## Architektur
+## Architecture
 
 - **WebApp**: React Router 7 (SSR) + Tailwind + View Transitions
-- **iOS App**: SwiftUI mit WKWebView + nativer Header/TabBar
+- **iOS App**: SwiftUI with WKWebView + native header/tab bar
 - **Docker**: nginx (TLS) + Node.js Dev Server
 
-## Voraussetzungen
+## Requirements
 
-- macOS mit Homebrew
-- Docker Desktop
-- Xcode >= 16 (fuer iOS Simulator)
-- Node.js >= 20, pnpm >= 9
+- macOS with Homebrew
+- Docker Desktop with Docker Compose v2 and `docker compose up --watch` support
+- Xcode >= 16 (for iOS Simulator)
+- Available local ports `80` and `443`
+- sudo permissions for certificate and `/etc/hosts` setup
+- Optional for local web app development outside Docker: Node.js >= 20 and pnpm >= 9
 
-## Schnellstart
+`make dev` does not require Node.js or pnpm on the host. The Docker image installs
+Node.js and pnpm inside the container. `make dev` installs `mkcert` via Homebrew
+if it is missing.
 
-1. Simulator starten (Xcode > Open Developer Tool > Simulator)
-2. `make dev` (installiert mkcert, erstellt Zertifikate, startet Docker)
-3. Browser oeffnet automatisch https://web.app
-4. iOS-Projekt in Xcode oeffnen: `ios/WebAppDemo/WebAppDemo.xcodeproj`
-5. Auf Simulator ausfuehren (Cmd+R)
+## Quick Start
 
-## Wie es funktioniert
+1. Start the simulator (Xcode > Open Developer Tool > Simulator)
+2. Run `make dev` (installs mkcert, creates certificates, starts Docker)
+3. The browser opens https://web.app automatically
+4. Open the iOS project in Xcode: `ios/WebAppDemo/WebAppDemo.xcodeproj`
+5. Run it on the simulator (Cmd+R)
 
-Die WebApp laeuft in einem Docker-Container und wird ueber nginx mit HTTPS
-unter der Domain `web.app` ausgeliefert. Die iOS-App laedt diese URL in
-einem WKWebView und kommuniziert ueber JavaScript-Bridges:
+## How It Works
+
+The web app runs in a Docker container and is served via nginx with HTTPS
+under the `web.app` domain. The iOS app loads this URL in a WKWebView and
+communicates through JavaScript bridges:
 
 - WebApp -> Native: `window.webkit.messageHandlers.<name>.postMessage({...})`
 - Native -> WebApp: `document.dispatchEvent(new CustomEvent("<name>"))`
 
-## Stoppen
+## Stop
 
 `make stop`
